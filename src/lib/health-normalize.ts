@@ -1,4 +1,6 @@
 export const healthTimeZone = "Europe/Stockholm";
+export const withingsMorningStartHour = 6;
+export const withingsMorningEndHour = 10;
 
 export type HealthObservation = {
   externalId: string;
@@ -102,7 +104,7 @@ export function withingsObservations(groups: WithingsMeasureGroup[]) {
     const date = new Date(group.date * 1000);
     if (!Number.isFinite(date.getTime()) || !Number.isFinite(value) || value <= 0 || value > 700) continue;
     const { day: localDay, hour } = localDateAndHour(date);
-    if (hour < 4 || hour >= 12) continue;
+    if (hour < withingsMorningStartHour || hour >= withingsMorningEndHour) continue;
     const observedAt = date.toISOString();
     const previous = earliest.get(localDay);
     if (previous?.observedAt && previous.observedAt <= observedAt) continue;

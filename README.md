@@ -36,7 +36,7 @@ Open **Admin → Health connections** to authorize each provider and run the fir
 ## Day vitals and publication
 
 - Google sync reads daily resting heart rate and the main sleep duration. Sleep belongs to the local wake date. The composite Fitbit Sleep Score can be entered manually in **Publishing**.
-- Withings sync reads the first attributed scale weight from 04:00 up to noon in Stockholm. A day with only afternoon readings has no synced morning weight.
+- Withings sync reads the first attributed scale weight from 06:00 up to 10:00 in Stockholm. A day with no readings in that window has no synced morning weight.
 - Manually entered public day values take precedence. Synced publishing uses `PUBLISH_GOOGLE_HEALTH` and `PUBLISH_WITHINGS`. Set these after confirming that your providers allow the intended public use. [Google Health data policy](https://developers.google.com/health/policies/health-api-developer-user-data-policy) · [Withings European terms](https://www.withings.com/en-eu/policies/terms-of-service)
 - Disconnecting a provider deletes its stored authorization and observations from this app. Provider-side authorization can be revoked through that provider's account settings.
 

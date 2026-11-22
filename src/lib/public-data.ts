@@ -1,4 +1,10 @@
 import { query } from "./db";
+import { healthTimeZone, withingsMorningEndHour, withingsMorningStartHour } from "./health-normalize";
+
+export const withingsMorningWeight = `o.provider = 'withings' AND o.metric = 'body_weight_kg'
+  AND (o.observed_at AT TIME ZONE '${healthTimeZone}')::date = o.local_day
+  AND extract(hour FROM o.observed_at AT TIME ZONE '${healthTimeZone}') >= ${withingsMorningStartHour}
+  AND extract(hour FROM o.observed_at AT TIME ZONE '${healthTimeZone}') < ${withingsMorningEndHour}`;
 
 export type WorkoutSummary = {
   id: string;
@@ -78,11 +84,11 @@ export async function dailyVitals(day: string) {
       coalesce(p.resting_heart_rate, max(o.value) FILTER (WHERE o.metric = 'resting_heart_rate'))::float8 AS resting_heart_rate,
       coalesce(p.sleep_minutes, max(o.value) FILTER (WHERE o.metric = 'sleep_minutes'))::float8 AS sleep_minutes,
       coalesce(p.sleep_score, max(o.value) FILTER (WHERE o.metric = 'sleep_score'))::float8 AS sleep_score,
-      coalesce(p.body_weight_kg, max(o.value) FILTER (WHERE o.metric = 'body_weight_kg'))::float8 AS body_weight_kg
+      (array_agg(o.value ORDER BY o.observed_at, o.external_id) FILTER (WHERE o.metric = 'body_weight_kg'))[1]::float8 AS body_weight_kg
     FROM (SELECT $1::date AS day) d LEFT JOIN published_daily_vitals p ON p.local_day = d.day
     LEFT JOIN health_observations o ON o.local_day = d.day AND (
       ($2::boolean AND o.provider = 'google-health' AND o.metric IN ('resting_heart_rate', 'sleep_minutes', 'sleep_score'))
-      OR ($3::boolean AND o.provider = 'withings' AND o.metric = 'body_weight_kg')
+      OR ($3::boolean AND ${withingsMorningWeight})
     )
     GROUP BY p.local_day`,
     [day, process.env.PUBLISH_GOOGLE_HEALTH === "true", process.env.PUBLISH_WITHINGS === "true"],

@@ -9,11 +9,14 @@ export async function POST(request: Request) {
     return new Response(null, { status: 401 });
   }
 
-  const selected = new URL(request.url).searchParams.get("provider");
+  const params = new URL(request.url).searchParams;
+  const selected = params.get("provider");
   const provider = selected === null ? null : providerName(selected);
   if (selected !== null && !provider) return new Response(null, { status: 400 });
   const providers = provider ? [provider] : Object.keys(healthProviders) as HealthProvider[];
-  const results = await Promise.all(providers.map((provider) => syncHealthProvider(provider)));
+  const results = await Promise.all(providers.map((provider) =>
+    syncHealthProvider(provider, { force: provider === "withings" && params.get("force") === "1" }),
+  ));
   return Response.json({ results }, {
     status: results.some((result) => result.outcome === "failed") ? 502 : 200,
     headers: { "Cache-Control": "no-store" },

@@ -45,7 +45,7 @@ export default async function ConnectionsPage({ searchParams }: { searchParams: 
           <h2>{healthProviders[provider].label}</h2>
           <p>{provider === "google-health"
             ? "Syncs daily resting heart rate and the main sleep duration. Fitbit’s composite sleep score is entered manually."
-            : "Syncs the first attributed weigh-in from 04:00 to before noon in Stockholm time."}</p>
+            : "Syncs the first attributed weigh-in from 06:00 to before 10:00 in Stockholm time."}</p>
           <p>{!configured ? "Server credentials or callback are missing." : !connected ? "Ready to connect." : reauthorize
             ? "Reconnect to restore access."
             : lastSyncedAt ? `Last synced ${dateTime.format(new Date(lastSyncedAt))} (Stockholm).` : "Connected. First sync pending."}</p>

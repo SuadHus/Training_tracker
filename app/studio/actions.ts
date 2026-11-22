@@ -19,23 +19,21 @@ export async function saveVitals(form: FormData) {
     ["resting_heart_rate", 1, 300],
     ["sleep_minutes", 0, 1440],
     ["sleep_score", 0, 100],
-    ["body_weight_kg", 1, 1000],
   ] as const;
   const values = fields.map(([name, min, max]) => {
     const raw = input(form, name);
     if (!raw) return null;
     const value = Number(raw);
-    const decimalAllowed = name === "body_weight_kg";
-    if (!Number.isFinite(value) || value < min || value > max || (!decimalAllowed && !Number.isInteger(value))) {
+    if (!Number.isFinite(value) || value < min || value > max || !Number.isInteger(value)) {
       redirect(`/studio?day=${day}&error=vitals`);
     }
     return value;
   });
   await query(
-    `INSERT INTO published_daily_vitals (local_day, resting_heart_rate, sleep_minutes, sleep_score, body_weight_kg)
-      VALUES ($1, $2, $3, $4, $5)
+    `INSERT INTO published_daily_vitals (local_day, resting_heart_rate, sleep_minutes, sleep_score)
+      VALUES ($1, $2, $3, $4)
       ON CONFLICT (local_day) DO UPDATE SET resting_heart_rate = excluded.resting_heart_rate,
-        sleep_minutes = excluded.sleep_minutes, sleep_score = excluded.sleep_score, body_weight_kg = excluded.body_weight_kg`,
+        sleep_minutes = excluded.sleep_minutes, sleep_score = excluded.sleep_score`,
     [day, ...values],
   );
   redirect(`/studio?day=${day}&saved=1`);

@@ -27,16 +27,16 @@ test("selects the earliest attributed Withings morning weigh-in across DST", () 
     measures: [{ type: 1, value, unit: -3 }],
   });
   assert.deepEqual(withingsObservations([
-    group("2026-03-28T05:00:00Z", 84000),
-    group("2026-03-28T03:00:00Z", 84420),
-    group("2026-03-28T02:59:00Z", 85000),
-    group("2026-03-29T02:01:00Z", 84270),
-    group("2026-03-29T02:00:00Z", 83900, 1),
-    group("2026-03-29T02:00:00Z", 83100, 0, 2),
-    group("2026-03-30T10:00:00Z", 83500),
+    group("2026-03-28T08:59:59Z", 84000),
+    group("2026-03-28T05:00:00Z", 84420),
+    group("2026-03-28T04:59:59Z", 85000),
+    group("2026-03-29T04:01:00Z", 84270),
+    group("2026-03-29T04:00:00Z", 83900, 1),
+    group("2026-03-29T04:00:00Z", 83100, 0, 2),
+    group("2026-03-30T08:00:00Z", 83500),
   ]), [
-    { externalId: "2026-03-28", metric: "body_weight_kg", localDay: "2026-03-28", observedAt: "2026-03-28T03:00:00.000Z", value: 84.42 },
-    { externalId: "2026-03-29", metric: "body_weight_kg", localDay: "2026-03-29", observedAt: "2026-03-29T02:01:00.000Z", value: 84.27 },
+    { externalId: "2026-03-28", metric: "body_weight_kg", localDay: "2026-03-28", observedAt: "2026-03-28T05:00:00.000Z", value: 84.42 },
+    { externalId: "2026-03-29", metric: "body_weight_kg", localDay: "2026-03-29", observedAt: "2026-03-29T04:01:00.000Z", value: 84.27 },
   ]);
 });
 
