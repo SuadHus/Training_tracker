@@ -245,11 +245,11 @@
   bottom: 0;
   z-index: 6;
   padding: 0 0.75rem calc(0.75rem + env(safe-area-inset-bottom));
-  background: var(--ink);
-  color: var(--ground);
+  background: var(--slab);
+  color: var(--on-slab);
 }
-.restLine { height: 4px; margin: 0 -0.75rem; background: var(--ink-soft); }
-.restLine i { display: block; height: 100%; background: var(--ground); }
+.restLine { height: 4px; margin: 0 -0.75rem; background: var(--slab-line); }
+.restLine i { display: block; height: 100%; background: var(--on-slab); }
 .restInner {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto auto;
@@ -262,23 +262,23 @@
 .restTime { line-height: 1; min-width: 0; }
 .restTime > span { display: block; font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; }
 .restTime > .restOver, .restTime > span.restOver { font-size: var(--text-l); letter-spacing: 0; padding-bottom: 0.2rem; }
-.restTime small { display: block; margin-top: 0.25rem; font-size: var(--text-xs); line-height: 1.25; font-weight: 400; color: var(--hairline); }
+.restTime small { display: block; margin-top: 0.25rem; font-size: var(--text-xs); line-height: 1.25; font-weight: 400; color: var(--on-slab-soft); }
 .restBtn {
   min-height: var(--tap);
   padding: 0 0.7rem;
   font-size: 1rem;
   font-weight: 800;
   white-space: nowrap;
-  color: var(--ground);
-  background: var(--ink);
-  border: 2px solid var(--ground);
+  color: var(--on-slab);
+  background: var(--slab);
+  border: 2px solid var(--on-slab);
   border-radius: 0;
 }
 .restBtn:disabled { color: var(--ink-mute); border-color: var(--ink-mute); }
-.restBtn:hover:not(:disabled) { background: var(--ink-soft); }
-.restSkip { color: var(--ink); background: var(--ground); }
-.restSkip:hover:not(:disabled) { background: var(--hairline); }
-.rest :focus-visible { outline-color: var(--ground); }
+.restBtn:hover:not(:disabled) { background: var(--slab-line); }
+.restSkip { color: var(--slab); background: var(--on-slab); }
+.restSkip:hover:not(:disabled) { background: var(--on-slab-soft); }
+.rest :focus-visible { outline-color: var(--on-slab); }
 
 @media (prefers-reduced-motion: no-preference) {
   .restLine i { transition: width 300ms linear; }

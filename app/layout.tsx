@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Schibsted_Grotesk } from "next/font/google";
+import { cookies } from "next/headers";
+import { GROUND, THEME_COOKIE, readTheme } from "@/src/lib/theme";
 import "./globals.css";
 
 // A Nordic news grotesque with true tabular figures: the numbers are the content.
@@ -11,11 +13,25 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "Training Log", statusBarStyle: "default" },
 };
-export const viewport: Viewport = { themeColor: "#ffffff", viewportFit: "cover" };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+const chosenTheme = async () => readTheme((await cookies()).get(THEME_COOKIE)?.value);
+
+// The browser's own chrome takes the colour of the page: the chosen theme, or the device's.
+export async function generateViewport(): Promise<Viewport> {
+  const theme = await chosenTheme();
+  return {
+    viewportFit: "cover",
+    colorScheme: theme === "auto" ? "light dark" : theme,
+    themeColor: theme === "auto"
+      ? [{ media: "(prefers-color-scheme: light)", color: GROUND.light }, { media: "(prefers-color-scheme: dark)", color: GROUND.dark }]
+      : GROUND[theme],
+  };
+}
+
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const theme = await chosenTheme();
   return (
-    <html lang="en" className={sans.variable}>
+    <html lang="en" className={sans.variable} data-theme={theme === "auto" ? undefined : theme}>
       <body>
         <a className="skip" href="#main">Skip to content</a>
         {children}

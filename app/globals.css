@@ -4,6 +4,11 @@
   The plate colours are the only saturated colour, and they always mean kilograms.
   Square corners throughout. Tokens first, then base elements, then shared parts.
   Page-specific layout lives in CSS modules next to each page.
+
+  Two themes. Paper is the sheet as printed; night is its negative, white type on
+  black, for a dim gym. The colour tokens are written out three times below (paper,
+  and night for its two selectors) plus once for .marked. tests/theme-tokens.test.ts
+  keeps the copies in step and checks the contrast of both themes.
 */
 
 :root {
@@ -24,15 +29,26 @@
   --plate-15: #f4b800;
   --plate-10: #1a9a48;
   --plate-5: #ffffff;
+  --plate-5-edge: #000000;      /* the white plate is outlined on paper */
   --plate-2-5: #1b1b1d;
+  --plate-2-5-edge: transparent; /* the black plate is outlined at night */
   --plate-1-25: #8d959d;
   --bar-steel: #5d636a;
 
+  /* The slab: the one inverted band, under the thumb while resting. */
+  --slab: #000000;
+  --on-slab: #ffffff;
+  --on-slab-soft: #c9cbcf;
+  --slab-line: #46494e;
+
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.25' stroke-linecap='square'%3E%3Cpolyline points='5 9 12 16 19 9'/%3E%3C/svg%3E");
+
   /* State. The marker yellow is a highlighter stroke: it says "you are here".
      Nothing else has a colour: focus, errors and deleting are drawn in ink, so
-     that red, blue, yellow and green only ever mean plates. */
+     that red, blue, yellow and green only ever mean plates. The stroke is the
+     same yellow in both themes, and what sits on it is always black. */
   --mark: #ffee7a;
-  --on-mark: #000000;     /* text on the highlighter, in both themes */
+  --on-mark: #000000;
 
   /* Type */
   --font: var(--font-sans), "Helvetica Neue", Arial, system-ui, sans-serif;
@@ -57,6 +73,88 @@
     --margin: 9rem;
     --gap: 1.5rem;
   }
+}
+
+/* Night. It follows the device unless the reader chose a theme (data-theme on <html>).
+   Screens only: on paper the sheet is always printed black on white. */
+@media screen and (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ground: #000000;
+    --wash: #1c1c1c;
+    --ink: #ffffff;
+    --ink-soft: #bfc2c7;
+    --ink-mute: #8f9399;
+    --rule: #ffffff;
+    --hairline: #3d3f43;
+    --plate-25: #e8323c;
+    --plate-20: #3f73e6;
+    --plate-15: #f4b800;
+    --plate-10: #23a955;
+    --plate-5: #ffffff;
+    --plate-5-edge: transparent;
+    --plate-2-5: #1b1b1d;
+    --plate-2-5-edge: #ffffff;
+    --plate-1-25: #9aa2aa;
+    --bar-steel: #7d848c;
+    --slab: #1c1c1c;
+    --on-slab: #ffffff;
+    --on-slab-soft: #bfc2c7;
+    --slab-line: #4a4d52;
+    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.25' stroke-linecap='square'%3E%3Cpolyline points='5 9 12 16 19 9'/%3E%3C/svg%3E");
+  }
+}
+@media screen {
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #000000;
+    --wash: #1c1c1c;
+    --ink: #ffffff;
+    --ink-soft: #bfc2c7;
+    --ink-mute: #8f9399;
+    --rule: #ffffff;
+    --hairline: #3d3f43;
+    --plate-25: #e8323c;
+    --plate-20: #3f73e6;
+    --plate-15: #f4b800;
+    --plate-10: #23a955;
+    --plate-5: #ffffff;
+    --plate-5-edge: transparent;
+    --plate-2-5: #1b1b1d;
+    --plate-2-5-edge: #ffffff;
+    --plate-1-25: #9aa2aa;
+    --bar-steel: #7d848c;
+    --slab: #1c1c1c;
+    --on-slab: #ffffff;
+    --on-slab-soft: #bfc2c7;
+    --slab-line: #4a4d52;
+    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.25' stroke-linecap='square'%3E%3Cpolyline points='5 9 12 16 19 9'/%3E%3C/svg%3E");
+  }
+}
+
+/* Whatever lies on the highlighter is ink on paper in both themes: inputs, the set
+   number and the plates of the next set keep their printed colours on the yellow. */
+.marked {
+  color-scheme: light;
+  --ground: #ffffff;
+  --wash: #f3f3f1;
+  --ink: #000000;
+  --ink-soft: #46494e;
+  --ink-mute: #666a70;
+  --rule: #000000;
+  --hairline: #c9cbcf;
+  --plate-25: #d4202b;
+  --plate-20: #1d4fb5;
+  --plate-15: #f4b800;
+  --plate-10: #1a9a48;
+  --plate-5: #ffffff;
+  --plate-5-edge: #000000;
+  --plate-2-5: #1b1b1d;
+  --plate-2-5-edge: transparent;
+  --plate-1-25: #8d959d;
+  --bar-steel: #5d636a;
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.25' stroke-linecap='square'%3E%3Cpolyline points='5 9 12 16 19 9'/%3E%3C/svg%3E");
+  color: var(--ink);
 }
 
 /* Base ---------------------------------------------------------------------- */
@@ -150,6 +248,16 @@ main.page { flex: 1 0 auto; padding-bottom: 4rem; }
 }
 .footer-rule { border-top: 1px solid var(--rule); max-width: calc(var(--page) - 2 * var(--gutter)); width: calc(100% - 2 * var(--gutter)); margin: 0 auto; }
 
+/* Theme choice: three words at the foot of the page, the chosen one underlined like the current page. */
+.theme { display: flex; align-items: center; gap: 0 0.25rem; margin-left: auto; color: var(--ink-soft); }
+.theme-name { margin-right: 0.5rem; }
+.theme button {
+  min-width: var(--tap); min-height: var(--tap); padding: 0 0.4rem; background: none; border: 0; border-radius: 0;
+  font-size: var(--text-s); color: var(--ink);
+}
+.theme button:hover { text-decoration: underline; }
+.theme button[aria-pressed="true"] { font-weight: 800; text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 0.3em; }
+
 /* Rows: margin column plus content. Every list on the site shares this grid. */
 
 .row {
@@ -239,8 +347,9 @@ main.page { flex: 1 0 auto; padding-bottom: 4rem; }
 .p-20 { fill: var(--plate-20); }
 .p-15 { fill: var(--plate-15); }
 .p-10 { fill: var(--plate-10); }
-.p-5 { fill: var(--plate-5); stroke: var(--ink); stroke-width: 1; vector-effect: non-scaling-stroke; }
-.p-2-5 { fill: var(--plate-2-5); }
+/* White on paper and black on night would vanish into the ground: each gets an edge where it needs one. */
+.p-5 { fill: var(--plate-5); stroke: var(--plate-5-edge); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.p-2-5 { fill: var(--plate-2-5); stroke: var(--plate-2-5-edge); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .p-1-25 { fill: var(--plate-1-25); }
 .per-side { font-size: var(--text-s); color: var(--ink-soft); }
 .per-side b { font-weight: 800; color: var(--ink); }
@@ -288,7 +397,7 @@ main.page { flex: 1 0 auto; padding-bottom: 4rem; }
 .textarea { resize: vertical; min-height: 6rem; }
 .select {
   appearance: none; padding-right: 2.4rem;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.25' stroke-linecap='square'%3E%3Cpolyline points='5 9 12 16 19 9'/%3E%3C/svg%3E");
+  background-image: var(--chevron);
   background-position: right 0.7rem center; background-size: 1.1rem; background-repeat: no-repeat;
 }
 

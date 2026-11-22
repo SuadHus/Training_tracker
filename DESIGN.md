@@ -1,6 +1,6 @@
 ---
 name: Training Log
-description: A training log typeset like a timetable. Black type on white; the only colour is the plates on the bar.
+description: A training log typeset like a timetable. Black type on white, or its negative at night; the only colour is the plates on the bar.
 colors:
   ground: "#ffffff"
   wash: "#f3f3f1"
@@ -9,6 +9,7 @@ colors:
   ink-mute: "#666a70"
   hairline: "#c9cbcf"
   mark: "#ffee7a"
+  on-mark: "#000000"
   plate-25: "#d4202b"
   plate-20: "#1d4fb5"
   plate-15: "#f4b800"
@@ -17,6 +18,23 @@ colors:
   plate-2-5: "#1b1b1d"
   plate-1-25: "#8d959d"
   bar-steel: "#5d636a"
+  slab: "#000000"
+  on-slab: "#ffffff"
+  night-ground: "#000000"
+  night-wash: "#1c1c1c"
+  night-ink: "#ffffff"
+  night-ink-soft: "#bfc2c7"
+  night-ink-mute: "#8f9399"
+  night-hairline: "#3d3f43"
+  night-plate-25: "#e8323c"
+  night-plate-20: "#3f73e6"
+  night-plate-15: "#f4b800"
+  night-plate-10: "#23a955"
+  night-plate-5: "#ffffff"
+  night-plate-2-5: "#1b1b1d"
+  night-plate-1-25: "#9aa2aa"
+  night-bar-steel: "#7d848c"
+  night-slab: "#1c1c1c"
 typography:
   display:
     fontFamily: "Schibsted Grotesk, Helvetica Neue, Arial, sans-serif"
@@ -97,7 +115,7 @@ Everything lives in `app/globals.css` (tokens, base elements, shared classes) an
 
 ### Neutral
 
-Ink on ground does all the work. `ink-soft` is for secondary text and `ink-mute` for light figures and placeholders; both keep at least 4.5:1 on `ground`, `wash` and `mark`. `hairline` separates rows and `ink` rules open sections. `wash` is the resting fill for hovered controls and for messages.
+Ink on ground does all the work. `ink-soft` is for secondary text and `ink-mute` for light figures and placeholders; both keep at least 4.5:1 on `ground` and `wash` in both themes, and on `mark` in their paper values. `hairline` separates rows and `ink` rules open sections. `wash` is the resting fill for hovered controls and for messages.
 
 ### Primary
 
@@ -107,10 +125,23 @@ The plate colours are the only saturated colour on the site, and they always mea
 
 One highlighter yellow, `mark`. It is the single "you are here" stroke: today's date in a list, the session in progress on the desk, the next set in the logger. A screen carries at most one.
 
+### Night
+
+The second theme is the negative of the print: white type on a black ground, for a dim gym and a phone held between sets. Nothing else changes. The same tokens carry other values (`night-*` above), so every rule, table and control inverts with the page: buttons become white with black type, a logged set is a white square with a black tick.
+
+- The plate colours are a step brighter so that red and blue keep 3:1 on black. The white plate loses its outline and the black 2.5 kg plate gains a white one: whichever plate matches the ground gets the edge.
+- The highlighter stays the same yellow, and what lies on it stays ink on paper. A row on `mark` carries the class `.marked`, which restores the paper tokens inside it, so its inputs, set number and plates look exactly as they do in print. Text set straight on the yellow uses `on-mark`.
+- The rest timer is the one inverted band of the paper theme. At night it is a `slab` a step above the ground rather than a white block under the thumb.
+
+The page follows the device unless the reader picks a theme: three words in the footer, Auto, Light and Dark. A choice is kept in a `theme` cookie and rendered into `<html data-theme>` by the server, so no page flashes the other theme and no script runs in the head. The session screen has no footer and takes the same choice.
+
+The colour tokens are written out more than once in `app/globals.css` (paper, night for its two selectors, and `.marked`). `tests/theme-tokens.test.ts` keeps the copies identical and holds both themes to their contrast.
+
 ### Named Rules
 
 - **Colour means kilograms.** Focus, errors and deleting are drawn in ink: a 3px ink ring, a dashed edge, a heavier weight. Red, blue, yellow and green never mark a state.
 - **State is a mark, not only a hue.** A logged set is a solid square with a tick. Every state reads in greyscale.
+- **Tokens only.** No module writes a colour. A value that is not a token cannot follow the theme.
 
 ## Typography
 
@@ -139,7 +170,7 @@ The session screen is a single 40rem column with its own top bar and no site mas
 
 ## Elevation & Depth
 
-Flat. There are no shadows and no layers except the modal sheet, which sits on a dimmed backdrop under a 4px ink rule, and the rest timer bar fixed to the bottom of the session screen.
+Flat. There are no shadows and no layers except the modal sheet, which sits on a dimmed backdrop under a 4px ink rule, and the rest timer, a `slab` fixed to the bottom of the session screen.
 
 ## Shapes
 
@@ -179,6 +210,10 @@ Set number, last time, inputs, done button. Logged: a solid square with a tick, 
 
 `<Sheet>` is the native dialog: from the bottom on a phone, centred on a desk.
 
+### Theme switch
+
+`<ThemeSwitch>` in the footer: the word Theme and three text buttons. The chosen one is bold with the same heavy underline as the current page in the navigation.
+
 ## Do's and Don'ts
 
 ### Do:
@@ -190,7 +225,7 @@ Set number, last time, inputs, done button. Logged: a solid square with a tick, 
 
 ### Don't:
 
-- Don't add a colour. Red, blue, yellow and green are plates.
+- Don't add a colour, and don't write one outside the tokens. Red, blue, yellow and green are plates.
 - Don't put a second highlighter stroke on a screen.
 - Don't box things into cards, round a corner, add a shadow or a gradient.
 - Don't put a small label above a heading, track out capitals, or use a monospace face.

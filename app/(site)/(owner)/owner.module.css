@@ -52,7 +52,7 @@
 .dangerQuiet { text-decoration-style: dashed; }
 
 /* In progress: the one highlighter stroke on this page, on the title. */
-.now .title { padding: 0.1rem 0.35rem; margin: -0.1rem -0.35rem; background: var(--mark); }
+.now .title { padding: 0.1rem 0.35rem; margin: -0.1rem -0.35rem; background: var(--mark); color: var(--on-mark); }
 
 .sub { margin: 1.75rem 0 0.75rem; font-size: var(--text-m); font-weight: 800; }
 .after { margin-top: 1.25rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1.5rem; }

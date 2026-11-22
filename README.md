@@ -83,6 +83,6 @@ TEST_DATABASE_URL=postgres://training:training-local@127.0.0.1:55481/training np
 
 They work inside their own throwaway schemas, load the pre-migration fixture, apply the schema twice and check that nothing was lost.
 
-The design system is described in `DESIGN.md` and lives in `app/globals.css` and `app/ui/`.
+The design system is described in `DESIGN.md` and lives in `app/globals.css` and `app/ui/`. The site has a light and a dark theme: it follows the device, and the footer has a switch that remembers a choice in a cookie.
 
 `AGENTS.md` is written by `next dev` for coding agents; it is committed so the working tree stays clean.

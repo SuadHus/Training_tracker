@@ -22,7 +22,7 @@
 .heaviest { margin-top: 0.6rem; }
 .heaviest b { font-weight: 800; }
 
-.today { padding: 0.1rem 0.3rem; margin: -0.1rem -0.3rem; background: var(--mark); color: var(--ink); }
+.today { padding: 0.1rem 0.3rem; margin: -0.1rem -0.3rem; background: var(--mark); color: var(--on-mark); }
 
 /* One session: title, the headline bar, then one line per exercise. */
 .session {
