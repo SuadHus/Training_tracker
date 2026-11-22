@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { historyAction, reopenWorkoutAction } from "@/src/actions/training";
+import { dayLabel } from "@/src/lib/day-format";
 import {
   isLogged, loggedCount, newId, nextSet, type ExerciseInfo, type FieldInfo, type WorkoutDoc,
 } from "@/src/lib/workout-doc";
@@ -191,6 +192,12 @@ export function WorkoutSession({ initial, exercises: initialExercises, fields, h
 
       <div className={styles.content}>
         {notice && <p className="notice notice--alert" role="alert">{notice}</p>}
+        {doc.status === "planned" && doc.day !== null && doc.day < today && logged === 0 && (
+          <p className={styles.late}>
+            Planned for {dayLabel(doc.day)}.{" "}
+            <button type="button" className={styles.retry} onClick={() => dispatch({ type: "setDay", day: today })}>Move it to today</button>
+          </p>
+        )}
 
         {doc.blocks.length === 0 ? (
           <p className={styles.teach}>

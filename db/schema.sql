@@ -260,4 +260,24 @@ ALTER TABLE workout_sets ADD CONSTRAINT workout_sets_block_fkey
 CREATE INDEX IF NOT EXISTS sets_block_position ON workout_sets(workout_exercise_id, position);
 CREATE INDEX IF NOT EXISTS sets_exercise_logged ON workout_sets(exercise_id, logged_at DESC) WHERE logged_at IS NOT NULL;
 
+-- A training block is a named run of weeks. Its sessions are ordinary planned
+-- workouts that carry the block and the week of it they belong to.
+CREATE TABLE IF NOT EXISTS training_blocks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title text NOT NULL,
+  start_day date NOT NULL,
+  weeks int NOT NULL CHECK (weeks BETWEEN 1 AND 52),
+  notes text NOT NULL DEFAULT '',
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE workouts
+  ADD COLUMN IF NOT EXISTS block_id uuid,
+  ADD COLUMN IF NOT EXISTS block_week int CHECK (block_week >= 1);
+-- Deleting a block keeps the sessions that were trained; they simply stop belonging to it.
+ALTER TABLE workouts DROP CONSTRAINT IF EXISTS workouts_block_id_fkey;
+ALTER TABLE workouts ADD CONSTRAINT workouts_block_id_fkey
+  FOREIGN KEY (block_id) REFERENCES training_blocks(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS workouts_block ON workouts(block_id, block_week, local_day) WHERE block_id IS NOT NULL;
+
 COMMIT;

@@ -2,6 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import {
+  addBlockSession, addBlockWeek, createBlock, deleteBlock, importBlock, removeBlockWeek, renameBlock,
+} from "../lib/block-store";
 import { requireOwner } from "../lib/owner";
 import {
   WorkoutInputError, isDay, isId, stockholmDay,
@@ -153,6 +156,15 @@ export async function importSheetAction(
   return attempt(async () => ({ ok: true as const, ...(await importTemplates(text, picks)) }));
 }
 
+export async function importBlockAction(
+  text: string, options: { title: string; startDay: string; newestFirst: boolean },
+): Promise<{ ok: true; id: string; sessions: number; weeks: number; newExercises: string[] } | Failure> {
+  await requireOwner();
+  if (typeof options !== "object" || options === null) return unreadable;
+  const { title, startDay, newestFirst } = options;
+  return attempt(async () => ({ ok: true as const, ...(await importBlock(text, { title, startDay, newestFirst })) }));
+}
+
 // Forms: FormData in, redirect out.
 
 export async function startWorkoutAction(data: FormData): Promise<void> {
@@ -191,5 +203,63 @@ export async function deleteWorkoutAction(data: FormData): Promise<void> {
     const workout = await loadWorkout(workoutId);
     await deleteWorkout(workoutId);
     return workout?.status === "template" ? "/admin/templates" : "/admin";
+  });
+}
+
+export async function createBlockAction(data: FormData): Promise<void> {
+  await requireOwner();
+  await form("/admin/blocks", async () => {
+    const layout = [0, 1, 2, 3, 4, 5, 6].flatMap((offset) => {
+      const templateId = text(data, `day_${offset}`);
+      return templateId ? [{ offset, templateId }] : [];
+    });
+    const id = await createBlock({
+      title: text(data, "title"), startDay: text(data, "start"), weeks: Number(text(data, "weeks")), addKg: text(data, "add_kg").replace(",", "."), layout,
+    });
+    return `/admin/blocks/${id}`;
+  });
+}
+
+export async function addBlockWeekAction(data: FormData): Promise<void> {
+  await requireOwner();
+  const blockId = text(data, "block_id");
+  await form(isId(blockId) ? `/admin/blocks/${blockId}` : "/admin/blocks", async () => {
+    await addBlockWeek(blockId, text(data, "add_kg").replace(",", "."));
+    return `/admin/blocks/${blockId}`;
+  });
+}
+
+export async function addBlockSessionAction(data: FormData): Promise<void> {
+  await requireOwner();
+  const blockId = text(data, "block_id");
+  await form(isId(blockId) ? `/admin/blocks/${blockId}` : "/admin/blocks", async () => {
+    await addBlockSession(blockId, { day: text(data, "day"), templateId: text(data, "template_id") });
+    return `/admin/blocks/${blockId}`;
+  });
+}
+
+export async function removeBlockWeekAction(data: FormData): Promise<void> {
+  await requireOwner();
+  const blockId = text(data, "block_id");
+  await form(isId(blockId) ? `/admin/blocks/${blockId}` : "/admin/blocks", async () => {
+    await removeBlockWeek(blockId);
+    return `/admin/blocks/${blockId}`;
+  });
+}
+
+export async function renameBlockAction(data: FormData): Promise<void> {
+  await requireOwner();
+  const blockId = text(data, "block_id");
+  await form(isId(blockId) ? `/admin/blocks/${blockId}` : "/admin/blocks", async () => {
+    await renameBlock(blockId, text(data, "title"), text(data, "notes"));
+    return `/admin/blocks/${blockId}`;
+  });
+}
+
+export async function deleteBlockAction(data: FormData): Promise<void> {
+  await requireOwner();
+  await form("/admin/blocks", async () => {
+    await deleteBlock(text(data, "block_id"));
+    return "/admin/blocks";
   });
 }

@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  buildDraft, guessExercise, parseSheet, rowLabel, sheetKey, suggestTitle, tidyName, type SheetEntry,
+  buildDraft, guessExercise, parseSheet, planBlock, readSheet, rowLabel, sessionName, sheetKey, sheetLimits, suggestStart,
+  suggestTitle, tidyName, usualWeekdays, type SheetEntry,
 } from "../src/lib/sheet-import";
 
 // Two workouts side by side, then a dated week of two under them, as a spreadsheet copies them.
@@ -79,7 +80,74 @@ test("a row reads back in a line", () => {
   assert.equal(rowLabel({ count: 1, reps: 6, repsMax: 8, load: null, rpe: 10, duration: null }, "weight_reps"), "6–8 reps, RPE 10");
   assert.equal(rowLabel({ count: 3, reps: 5, repsMax: null, load: 5, rpe: null, duration: null }, "bodyweight_reps"), "+5 × 5 × 3");
   assert.equal(rowLabel({ count: 1, reps: 60, repsMax: null, load: null, rpe: null, duration: null }, "duration"), "1:00");
-  assert.equal(rowLabel({ count: 1, reps: null, repsMax: null, load: null, rpe: null, duration: null }, "weight_reps"), "no numbers");
+  // A row without numbers still says how many sets it is.
+  assert.equal(rowLabel({ count: 1, reps: null, repsMax: null, load: null, rpe: null, duration: null }, "weight_reps"), "1 set");
+  assert.equal(rowLabel({ count: 3, reps: null, repsMax: null, load: null, rpe: 7, duration: null }, "weight_reps"), "3 sets, RPE 7");
+});
+
+test("a sheet is laid out as the weeks of a block from any first day", () => {
+  const workouts = parseSheet(sheet);
+  assert.deepEqual(workouts.map((workout) => workout.section), [0, 0, 1, 1]);
+  assert.deepEqual(workouts.map(sessionName), ["Squat + Bench press", "Deadlift + Pullups", "Squat + Reverse plank", "Pullups + Carry"]);
+
+  // The dated week trains two days apart, so the undated week of the same size borrows that spread.
+  // 2026-11-29 is a Sunday: a block week starts on the day it is given, not on a Monday.
+  assert.deepEqual(planBlock(workouts, "2026-11-29"), [
+    { week: 1, sessions: [{ index: 0, day: "2026-11-29" }, { index: 1, day: "2026-12-01" }] },
+    { week: 2, sessions: [{ index: 2, day: "2026-12-06" }, { index: 3, day: "2026-12-08" }] },
+  ]);
+  // Newest week on top: the lower group becomes week 1.
+  assert.deepEqual(planBlock(workouts, "2026-11-29", true), [
+    { week: 1, sessions: [{ index: 2, day: "2026-11-29" }, { index: 3, day: "2026-12-01" }] },
+    { week: 2, sessions: [{ index: 0, day: "2026-12-06" }, { index: 1, day: "2026-12-08" }] },
+  ]);
+  assert.deepEqual(planBlock([], "2026-11-29"), []);
+});
+
+test("weeks without usable dates get the usual spread", () => {
+  const three = parseSheet([line(["Squat", "3", "5", "100"], ["Bench", "3", "5", "80"], ["Deadlift", "1", "5", "140"])].join("\n"));
+  assert.deepEqual(planBlock(three, "2026-11-23")[0].sessions.map(({ day }) => day), ["2026-11-23", "2026-11-25", "2026-11-27"]);
+  assert.deepEqual([1, 2, 3, 4, 5, 6, 7, 9].map((count) => usualWeekdays(count)), [
+    [0], [0, 3], [0, 2, 4], [0, 1, 3, 4], [0, 1, 2, 3, 4], [0, 1, 2, 3, 4, 5], [0, 1, 2, 3, 4, 5, 6], [0, 1, 2, 3, 4, 5, 6],
+  ]);
+  assert.deepEqual(usualWeekdays(0), []);
+
+  // Dates that run backwards, or over more than a week, say nothing about the spread.
+  const backwards = parseSheet([
+    line(["2026-10-27", "", "", ""], ["2026-10-25", "", "", ""]),
+    line(["Squat", "3", "5", "100"], ["Bench", "3", "5", "80"]),
+  ].join("\n"));
+  assert.deepEqual(planBlock(backwards, "2026-11-23")[0].sessions.map(({ day }) => day), ["2026-11-23", "2026-11-26"]);
+  const farApart = parseSheet([
+    line(["2026-10-25", "", "", ""], ["2026-11-04", "", "", ""]),
+    line(["Squat", "3", "5", "100"], ["Bench", "3", "5", "80"]),
+  ].join("\n"));
+  assert.deepEqual(planBlock(farApart, "2026-11-23")[0].sessions.map(({ day }) => day), ["2026-11-23", "2026-11-26"]);
+});
+
+test("what a sheet holds beyond the limits is counted, never dropped in silence", () => {
+  // 40 workouts stacked under each other: 40 weeks of one session.
+  const tall = Array.from({ length: 40 }, (_, at) => `Squat\t3\t5\t${100 + at}`).join("\n\n\n");
+  const read = readSheet(tall);
+  assert.deepEqual([read.workouts.length, read.found], [sheetLimits.workouts, 40]);
+  const plan = planBlock(read.workouts, "2026-11-23");
+  assert.deepEqual([plan.length, plan.at(-1)!.week, plan.at(-1)!.sessions[0].day], [sheetLimits.weeks, 16, "2027-03-08"]);
+  // Newest on top: week 1 is the bottom of what was read, and the sixteen weeks nearest the bottom are kept.
+  assert.equal(planBlock(read.workouts, "2026-11-23", true).at(-1)!.sessions[0].index, 14);
+
+  // Nine workouts side by side: a week takes seven of them.
+  const wide = line(...Array.from({ length: 9 }, (_, at) => [`Lift ${at + 1}`, "3", "5", "100"]));
+  const [week] = planBlock(parseSheet(wide), "2026-11-23");
+  assert.deepEqual(week.sessions.map(({ index, day }) => [index, day.slice(8)]), [[0, "23"], [1, "24"], [2, "25"], [3, "26"], [4, "27"], [5, "28"], [6, "29"]]);
+});
+
+test("the first day suggested for a block falls on the weekday the sheet's weeks start on", () => {
+  const workouts = parseSheet(sheet);
+  // The sheet's dated week starts on Sunday 25 October.
+  assert.equal(suggestStart(workouts, "2026-11-23"), "2026-11-29");
+  assert.equal(suggestStart(workouts, "2026-11-29"), "2026-11-29");
+  assert.equal(suggestStart(workouts, "2026-11-30"), "2026-12-06");
+  assert.equal(suggestStart(parseSheet("Squat\t3\t5\t100"), "2026-11-23"), "2026-11-23");
 });
 
 test("a workout becomes a template draft with one set per set", () => {

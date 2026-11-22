@@ -83,6 +83,8 @@
 .content { padding-top: 0; }
 .content > :global(.notice) { margin: 0.25rem var(--gutter) 0; }
 .teach { max-width: 28rem; padding: 1.5rem var(--gutter) 0.5rem; color: var(--ink-soft); }
+/* A session opened after its planned day: one line, so the log can say when it was really trained. */
+.late { padding: 0.75rem var(--gutter) 0; font-size: var(--text-s); color: var(--ink-soft); }
 
 /* Exercise blocks ---------------------------------------------------------------- */
 

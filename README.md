@@ -32,6 +32,15 @@ A workout is an ordered list of exercises, and each exercise holds its sets. Tem
 - **Import from a spreadsheet** (under Templates) turns rows copied from Excel or Sheets into templates: one exercise per row with sets, reps and a load, an RPE or a remark. Workouts side by side and weeks stacked under each other become separate templates, and exercises the library does not know are added.
 - **Extra set fields** add something to record on a set, such as bar speed, for every exercise or for one.
 
+## Training blocks
+
+A block (**Blocks**) is a named run of training weeks. Its sessions are ordinary planned sessions, so they turn up on the desk on their days and are logged like any other.
+
+- **Build one from templates**: name it, pick the first day and the number of weeks, and say which template is trained on which day of the week. A week starts on the day you pick, so a block can run Sunday to Saturday. *Add each week* puts that many kilograms on every load, week after week.
+- **Paste one from a spreadsheet**: on the import page choose *One training block*. Each stacked group of the sheet becomes a week and each workout in it a session. Dates in the sheet only decide how the sessions are spread over the week.
+- **The week view** lays every week out with its days side by side: what is planned, and after training what was done, with the plan struck through where it differs. Add a week (the last one repeated, heavier if you like), add a single session, or take the last week off again.
+- The desk shows the block that holds today and a week of its sessions either side of today. Deleting a block removes the sessions that were never started and keeps everything that was trained.
+
 ## Logging a session
 
 The session screen is built for one thumb between sets. Each set is one row: what you did last time, the load, the reps, RPE, and a done button. A row you leave untouched logs its target, or last time's numbers when the template gives none. The next set is marked, and for barbell lifts it shows the plates to put on each side. A rest timer starts when a set is done.

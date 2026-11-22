@@ -32,6 +32,7 @@
      Nothing else has a colour: focus, errors and deleting are drawn in ink, so
      that red, blue, yellow and green only ever mean plates. */
   --mark: #ffee7a;
+  --on-mark: #000000;     /* text on the highlighter, in both themes */
 
   /* Type */
   --font: var(--font-sans), "Helvetica Neue", Arial, system-ui, sans-serif;

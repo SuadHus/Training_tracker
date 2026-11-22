@@ -3,7 +3,7 @@
 // side by side, weeks stacked under each other. Pure: no database, no clock.
 import { dateLabel } from "./day-format";
 import {
-  emptySet, formatDuration, formatNumber, isDay, limits, newId,
+  addDays, emptySet, formatDuration, formatNumber, isDay, limits, newId, weekdayIndex,
   type BlockDoc, type Equipment, type SetDoc, type Tracking, type WorkoutDraft,
 } from "./workout-doc";
 
@@ -26,9 +26,15 @@ export type SheetEntry = {
   bodyweight: boolean;
 };
 
-export type SheetWorkout = { day: string | null; label: string | null; entries: SheetEntry[] };
+export type SheetWorkout = {
+  day: string | null;
+  label: string | null;
+  entries: SheetEntry[];
+  /** Which stacked group of the sheet it sits in, from the top: sheets keep one week per group. */
+  section: number;
+};
 
-export const sheetLimits = { characters: 200_000, workouts: 30 } as const;
+export const sheetLimits = { characters: 200_000, workouts: 30, weeks: 16, sessionsPerWeek: 7 } as const;
 
 const number = (text: string) => Number(text.replace(",", "."));
 const amount = "(\\d+(?:[.,]\\d+)?)";
@@ -166,8 +172,13 @@ function entriesOf(rows: string[][]): SheetEntry[] {
  * row may be a date or a heading such as "Day 1".
  */
 export function parseSheet(text: string): SheetWorkout[] {
+  return readSheet(text).workouts;
+}
+
+/** The workouts of a sheet, and how many it holds in all: only the first `sheetLimits.workouts` are read. */
+export function readSheet(text: string): { workouts: SheetWorkout[]; found: number } {
   const rows = table(text.slice(0, sheetLimits.characters));
-  const workouts: Array<SheetWorkout & { top: number; left: number }> = [];
+  const workouts: Array<Omit<SheetWorkout, "section"> & { top: number; left: number }> = [];
   for (const [start, end] of columnGroups(rows)) {
     let block: string[][] = [];
     let top = 0;
@@ -204,7 +215,56 @@ export function parseSheet(text: string): SheetWorkout[] {
     return { workout, section };
   });
   placed.sort((a, b) => a.section - b.section || a.workout.left - b.workout.left);
-  return placed.slice(0, sheetLimits.workouts).map(({ workout: { day, label, entries } }) => ({ day, label, entries }));
+  return {
+    workouts: placed.slice(0, sheetLimits.workouts).map(({ workout: { day, label, entries }, section: at }) => ({ day, label, entries, section: at })),
+    found: placed.length,
+  };
+}
+
+/** Which days of a training week (its first day is 0) so many sessions usually fall on. */
+export function usualWeekdays(count: number): number[] {
+  const usual: Record<number, number[]> = {
+    1: [0], 2: [0, 3], 3: [0, 2, 4], 4: [0, 1, 3, 4], 5: [0, 1, 2, 3, 4], 6: [0, 1, 2, 3, 4, 5],
+  };
+  return usual[count] ?? Array.from({ length: Math.min(count, 7) }, (_, index) => index);
+}
+
+const daysApart = (from: string, to: string) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
+
+export type PlannedWeek = { week: number; sessions: Array<{ index: number; day: string }> };
+
+/**
+ * Lay a sheet out as the weeks of a training block whose first week starts on `start`:
+ * each stacked group is a week, each workout in it a session. Dates in the sheet only
+ * say how the sessions are spread over a week; a week without dates borrows the spread
+ * of a dated week of the same size, or the usual one. A block holds `sheetLimits.weeks`
+ * weeks of `sheetLimits.sessionsPerWeek` sessions; what does not fit is left out.
+ */
+export function planBlock(workouts: readonly SheetWorkout[], start: string, newestFirst = false): PlannedWeek[] {
+  const every = [...new Set(workouts.map((workout) => workout.section))].sort((a, b) => a - b);
+  if (newestFirst) every.reverse();
+  const sections = every.slice(0, sheetLimits.weeks);
+  const members = (section: number) => workouts.map((workout, index) => ({ workout, index }))
+    .filter(({ workout }) => workout.section === section).slice(0, sheetLimits.sessionsPerWeek);
+  const written = (section: number): number[] | null => {
+    const days = members(section).map(({ workout }) => workout.day);
+    if (!days.length || days.some((day) => !day)) return null;
+    const spread = days.map((day) => daysApart(days[0]!, day!));
+    return spread.every((offset, at) => offset < 7 && (at === 0 || offset > spread[at - 1])) ? spread : null;
+  };
+  return sections.map((section, at) => {
+    const sessions = members(section);
+    const borrowed = sections.map(written).find((spread) => spread?.length === sessions.length);
+    const spread = written(section) ?? borrowed ?? usualWeekdays(sessions.length);
+    return { week: at + 1, sessions: sessions.map(({ index }, slot) => ({ index, day: addDays(start, 7 * at + spread[slot]) })) };
+  });
+}
+
+/** A first day for a pasted block: the next day, from today on, that falls on the weekday the sheet's weeks start on. */
+export function suggestStart(workouts: readonly SheetWorkout[], today: string): string {
+  const first = workouts.find((workout) => workout.day)?.day;
+  if (!first) return today;
+  return addDays(today, (weekdayIndex(first) - weekdayIndex(today) + 7) % 7);
 }
 
 export type ExerciseGuess = { tracking: Tracking; equipment: Equipment; primaryMuscle: string };
@@ -245,14 +305,19 @@ export function guessExercise(entry: SheetEntry): ExerciseGuess {
   return { tracking, equipment, primaryMuscle };
 }
 
-/** A name for a workout that came without one: its first two exercises, and its date when it has one. */
-export function suggestTitle(workout: SheetWorkout): string {
-  if (workout.label) return workout.label.slice(0, limits.title);
+/** What a workout is called as a session of a block: its heading, or its first two exercises. */
+export function sessionName(workout: SheetWorkout): string {
   const names = [...new Set(workout.entries.map((entry) => entry.name))].slice(0, 2).join(" + ");
-  return (workout.day ? `${names}, ${dateLabel(workout.day)}` : names).slice(0, limits.title);
+  return (workout.label ?? names).slice(0, limits.title);
 }
 
-/** One row in words, for the preview: "100 × 2 × 2", "6–8 reps, RPE 10", "1:00". */
+/** A name for a workout that came without one: its first two exercises, and its date when it has one. */
+export function suggestTitle(workout: SheetWorkout): string {
+  if (workout.label || !workout.day) return sessionName(workout);
+  return `${sessionName(workout)}, ${dateLabel(workout.day)}`.slice(0, limits.title);
+}
+
+/** One row in words: "100 × 2 × 2", "6–8 reps, RPE 10", "1:00", or "2 sets" when it gives no numbers. */
 export function rowLabel(row: SheetRow, tracking: Tracking): string {
   const parts: string[] = [];
   const seconds = row.duration ?? (tracking === "duration" ? row.reps : null);
@@ -264,8 +329,8 @@ export function rowLabel(row: SheetRow, tracking: Tracking): string {
     else if (reps) parts.push(`${reps} reps`);
     else if (weight) parts.push(`${weight} kg`);
   }
-  if (!parts.length) parts.push("no numbers");
-  if (row.count > 1) parts[0] = `${parts[0]} × ${row.count}`;
+  if (!parts.length) parts.push(row.count === 1 ? "1 set" : `${row.count} sets`);
+  else if (row.count > 1) parts[0] = `${parts[0]} × ${row.count}`;
   if (row.rpe !== null) parts.push(`RPE ${formatNumber(row.rpe)}`);
   return parts.join(", ");
 }

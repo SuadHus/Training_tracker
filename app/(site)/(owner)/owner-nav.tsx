@@ -8,6 +8,7 @@ import styles from "./owner.module.css";
 
 const links = [
   { href: "/admin", label: "Desk", exact: true },
+  { href: "/admin/blocks", label: "Blocks" },
   { href: "/admin/templates", label: "Templates" },
   { href: "/admin/exercises", label: "Exercises" },
   { href: "/studio", label: "Publishing" },

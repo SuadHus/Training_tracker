@@ -3,6 +3,7 @@ import Link from "next/link";
 import { deleteWorkoutAction, startWorkoutAction } from "@/src/actions/training";
 import { SubmitButton } from "@/app/ui/submit-button";
 import { clockTime, dayLabel, weekLabel, weekName, weekRange } from "@/src/lib/day-format";
+import { currentBlock } from "@/src/lib/block-store";
 import { requireOwner } from "@/src/lib/owner";
 import { addDays, weekStart } from "@/src/lib/workout-doc";
 import { deskData, type DeskWorkout } from "@/src/lib/workout-store";
@@ -28,7 +29,7 @@ function DeleteSession({ id, subject }: { id: string; subject: string }) {
 export default async function Desk({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   await requireOwner();
   const { error } = await searchParams;
-  const desk = await deskData();
+  const [desk, block] = await Promise.all([deskData(), currentBlock()]);
   const { today } = desk;
   const monday = weekStart(today);
   const nothingToday = desk.inProgress.length === 0 && desk.todayPlanned.length === 0;
@@ -44,6 +45,16 @@ export default async function Desk({ searchParams }: { searchParams: Promise<{ e
       </div>
 
       {error && <div className="row row--flush row--stack"><div /><p className="notice notice--alert" role="alert">{error}</p></div>}
+
+      {block && (
+        <div className="row row--stack">
+          <h2 className="row-margin">Block</h2>
+          <div className={styles.main}>
+            <span className={styles.title}><Link href={`/admin/blocks/${block.id}#week-${block.week}`}>{block.title}</Link></span>
+            <span className={styles.names}>Week {block.week} of {block.weeks}, {block.completed} of {block.sessions} sessions done</span>
+          </div>
+        </div>
+      )}
 
       {desk.inProgress.length > 0 && (
         <div className="row row--stack">
@@ -72,7 +83,9 @@ export default async function Desk({ searchParams }: { searchParams: Promise<{ e
                   <div className={styles.main}>
                     <span className={styles.title}>{workout.title}</span>
                     <span className={styles.names}>{names(workout)}</span>
-                    <span className={`${styles.names} light`}>Planned {clockTime(workout.createdAt)}</span>
+                    <span className={`${styles.names} light`}>
+                      {workout.block ? `${workout.block.title}${workout.block.week ? `, week ${workout.block.week}` : ""}` : `Planned ${clockTime(workout.createdAt)}`}
+                    </span>
                   </div>
                   <div className={styles.actions}>
                     <Link className="btn" href={`/admin/workouts/${workout.id}`}>Open<span className="sr"> {workout.title}</span></Link>
@@ -139,6 +152,14 @@ export default async function Desk({ searchParams }: { searchParams: Promise<{ e
                 </li>
               ))}
             </ul>
+          )}
+          {desk.tucked.ahead + desk.tucked.behind > 0 && (
+            <p className={styles.tucked}>
+              {[
+                desk.tucked.ahead > 0 && `${desk.tucked.ahead} more planned further ahead`,
+                desk.tucked.behind > 0 && `${desk.tucked.behind} missed more than a week ago`,
+              ].filter(Boolean).join(", ")}. They are in <Link href="/admin/blocks">your blocks</Link>.
+            </p>
           )}
           <PlanForm id={randomUUID()} templates={desk.templates.map(({ id, title }) => ({ id, title }))} defaultDay={addDays(today, 1)} />
         </div>

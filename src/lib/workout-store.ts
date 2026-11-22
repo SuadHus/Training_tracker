@@ -2,7 +2,7 @@
 // Server only: this module talks to the database.
 import { query, transaction } from "./db";
 import {
-  EQUIPMENT, TRACKINGS, WorkoutInputError, isDay, isId, limits, parseWorkoutDraft, rejectNul, stockholmDay,
+  EQUIPMENT, TRACKINGS, WorkoutInputError, addDays, isDay, isId, limits, parseWorkoutDraft, rejectNul, stockholmDay,
   type BlockDoc, type Equipment, type ExerciseInfo, type FieldInfo, type FieldKind, type Measures, type SetDoc,
   type Tracking, type WorkoutDoc, type WorkoutStatus,
 } from "./workout-doc";
@@ -390,6 +390,8 @@ export async function deleteWorkout(id: string): Promise<void> {
 export type DeskWorkout = {
   id: string; title: string; day: string; status: "planned" | "completed"; exerciseCount: number; setCount: number;
   loggedCount: number; startedAt: string | null; createdAt: string; exercises: string[];
+  /** The training block the session belongs to, when it was planned as part of one. */
+  block: { id: string; title: string; week: number | null } | null;
 };
 export type DeskTemplate = {
   id: string; title: string; notes: string; exerciseCount: number; setCount: number; exercises: string[];
@@ -398,10 +400,13 @@ export type DeskTemplate = {
 export type DeskData = {
   today: string; inProgress: DeskWorkout[]; todayPlanned: DeskWorkout[]; overdue: DeskWorkout[];
   upcoming: DeskWorkout[]; templates: DeskTemplate[]; recent: DeskWorkout[];
+  /** Sessions of blocks left off the desk: planned more than a week ahead, or missed more than a week ago. */
+  tucked: { ahead: number; behind: number };
   counts: { exercises: number; completed: number };
 };
 
 const MOST_EXERCISES_SHOWN = 6;
+const DESK_BLOCK_DAYS = 7;
 // A template counts as used by sessions that were actually trained, not by ones only planned.
 const trained = "(u.status = 'completed' OR u.started_at IS NOT NULL)";
 
@@ -415,6 +420,7 @@ export async function deskData(): Promise<DeskData> {
           (SELECT id FROM workouts WHERE status = 'completed' ORDER BY local_day DESC, started_at DESC NULLS LAST, id LIMIT 10)
         )
         SELECT w.id, w.title, w.local_day::text AS day, w.status, w.started_at, w.created_at,
+            w.block_id, w.block_week, (SELECT t.title FROM training_blocks t WHERE t.id = w.block_id) AS block_title,
             (SELECT count(*) FROM workout_exercises b WHERE b.workout_id = w.id)::int AS exercise_count,
             count(s.id)::int AS set_count, count(s.logged_at)::int AS logged_count
           FROM picked p JOIN workouts w ON w.id = p.id LEFT JOIN workout_sets s ON s.workout_id = w.id
@@ -450,18 +456,26 @@ export async function deskData(): Promise<DeskData> {
     id: row.id, title: row.title, day: row.day, status: row.status, exerciseCount: row.exercise_count,
     setCount: row.set_count, loggedCount: row.logged_count, startedAt: iso(row.started_at),
     createdAt: row.created_at.toISOString(), exercises: namesOf.get(row.id) ?? [],
+    block: row.block_id ? { id: row.block_id, title: row.block_title ?? "", week: row.block_week } : null,
   }));
   const newestFirst = (a: DeskWorkout, b: DeskWorkout) =>
     b.day.localeCompare(a.day) || (b.startedAt ?? "").localeCompare(a.startedAt ?? "") || a.id.localeCompare(b.id);
   const planned = desk.filter((workout) => workout.status === "planned");
   const idle = planned.filter((workout) => workout.loggedCount === 0);
+  // A block plans months ahead. The desk keeps a week of it either side of today; the block shows the rest.
+  const ahead = addDays(today, DESK_BLOCK_DAYS);
+  const behind = addDays(today, -DESK_BLOCK_DAYS);
+  const near = (workout: DeskWorkout) => !workout.block || (workout.day >= behind && workout.day <= ahead);
+  const overdue = idle.filter((workout) => workout.day < today);
+  const upcoming = idle.filter((workout) => workout.day > today);
 
   return {
     today,
     inProgress: planned.filter((workout) => workout.loggedCount > 0).sort(newestFirst),
     todayPlanned: idle.filter((workout) => workout.day === today).sort(newestFirst),
-    overdue: idle.filter((workout) => workout.day < today).sort(newestFirst),
-    upcoming: idle.filter((workout) => workout.day > today).sort((a, b) => a.day.localeCompare(b.day) || a.id.localeCompare(b.id)),
+    overdue: overdue.filter(near).sort(newestFirst),
+    upcoming: upcoming.filter(near).sort((a, b) => a.day.localeCompare(b.day) || a.id.localeCompare(b.id)),
+    tucked: { ahead: upcoming.filter((workout) => !near(workout)).length, behind: overdue.filter((workout) => !near(workout)).length },
     templates: templates.map((row): DeskTemplate => ({
       id: row.id, title: row.title, notes: row.notes, exerciseCount: row.exercise_count, setCount: row.set_count,
       exercises: namesOf.get(row.id) ?? [], lastUsed: row.last_used, timesUsed: row.times_used,
