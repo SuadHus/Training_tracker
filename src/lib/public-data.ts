@@ -122,14 +122,15 @@ export async function publicJournalPost(id: string) {
 
 export async function publicProgress() {
   const [{ rows: weeks }, { rows: lifts }] = await Promise.all([
-    query<{ day: string; tonnage: number }>(
+    query<{ day: string; tonnage: number; sessions: number; work_sets: number }>(
       `WITH weeks AS (
         SELECT generate_series(date_trunc('week', now() AT TIME ZONE 'Europe/Stockholm') - interval '5 weeks',
           date_trunc('week', now() AT TIME ZONE 'Europe/Stockholm'), interval '1 week')::date AS day
       )
-      SELECT week.day::text, coalesce(sum(s.reps * s.load_kg), 0)::float8 AS tonnage
+      SELECT week.day::text, coalesce(sum(s.reps * s.load_kg), 0)::float8 AS tonnage,
+        count(DISTINCT w.id)::int AS sessions, count(s.id)::int AS work_sets
       FROM weeks week LEFT JOIN workouts w ON w.status = 'completed' AND w.local_day >= week.day AND w.local_day < week.day + 7
-      LEFT JOIN workout_sets s ON s.workout_id = w.id AND NOT s.warmup
+      LEFT JOIN workout_sets s ON s.workout_id = w.id AND NOT s.warmup AND ${recorded}
       GROUP BY week.day ORDER BY week.day`,
     ),
     query<{ id: string; name: string; weight: number; reps: number; estimate: number }>(

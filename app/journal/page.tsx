@@ -8,7 +8,7 @@ export const metadata = { title: "Journal" };
 export default async function Journal() {
   const posts = await publicJournal();
   return <>
-    <section className="intro"><p className="eyebrow">Notes from the process</p><h1>Journal</h1></section>
+    <section className="intro"><h1>Journal</h1><p className="lede">Notes from the training process.</p></section>
     {posts.length ? <ul className="journal-index">
       {posts.map((post) => <li key={post.id}>
         <Link href={`/journal/${post.id}`}>
@@ -17,6 +17,6 @@ export default async function Journal() {
           <span aria-hidden="true" className="arrow">↗</span>
         </Link>
       </li>)}
-    </ul> : <p className="empty">Published entries will appear here.</p>}
+    </ul> : <p className="empty narrow">Published entries will appear here.</p>}
   </>;
 }

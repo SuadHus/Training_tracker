@@ -14,7 +14,13 @@ npm run db:init
 npm run dev
 ```
 
-Open http://localhost:3000. The public site works with an empty database. Open `/admin` after setting up Google sign-in. On a phone, add the HTTPS site to your home screen for direct access to the logger. Edits to existing set rows can be saved as a draft in that browser, then submitted when connectivity returns.
+Open http://localhost:3000. The public site works with an empty database. Open `/admin` after setting up Google sign-in. On a phone, add the HTTPS site to your home screen for direct access to the logger. Edits to existing set rows are saved as drafts in that browser and can be submitted when connectivity returns.
+
+## Plan and log workouts
+
+Build a template by adding exercises and target sets. Reorder exercise blocks, duplicate individual targets, and start a session today or schedule one for another date. You can also save a workout as a template using its recorded reps and loads or any remaining targets. A template and the sessions created from it can be edited independently.
+
+During a session, jump to the next unlogged set or open any set to edit it. The exercise card shows the most recent recorded working set, and you can use prior measurements to fill the form before logging. Completing a session publishes its recorded sets and workout notes.
 
 ## OAuth setup
 

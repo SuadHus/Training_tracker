@@ -27,6 +27,7 @@ export default async function Workout({ params }: { params: Promise<{ id: string
     ["Fitbit Sleep Score", vitals.sleep_score === null ? null : `${vitals.sleep_score}/100`],
     ["Morning bodyweight", vitals.body_weight_kg === null ? null : `${fmt.format(vitals.body_weight_kg)} kg`],
   ];
+  const muscles = Object.entries(summary.muscles).sort((a, b) => b[1] - a[1]);
   return <>
     <section className="intro">
       <Link href="/training" className="back-link">← All workouts</Link>
@@ -63,16 +64,23 @@ export default async function Workout({ params }: { params: Promise<{ id: string
             </li>)}
           </ol>
         </article>)}
-        <div className="section-heading"><h2>Working sets by muscle</h2></div>
-        <ul className="progress-lifts">{Object.entries(summary.muscles).sort((a, b) => b[1] - a[1]).map(([name, count]) =>
-          <li key={name}><span>{name}</span><strong>{count}</strong></li>)}</ul>
       </section>
-      <aside className="daily-vitals">
-        <div className="section-heading"><h2>Day vitals</h2></div>
-        <dl>
-          {dayVitals.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value ?? "—"}</dd></div>)}
-        </dl>
-        <p className="muted">Sleep is shown for the day it ended.</p>
+      <aside className="detail-rail" aria-label="Workout and recovery breakdown">
+        <section className="daily-vitals public-panel" aria-labelledby="day-vitals">
+          <div className="section-heading"><h2 id="day-vitals">Day vitals</h2></div>
+          <dl>
+            {dayVitals.map(([label, value]) => <div key={label}>
+              <dt>{label}</dt>
+              <dd>{value ?? <><span aria-hidden="true">—</span><span className="sr-only">Unavailable</span></>}</dd>
+            </div>)}
+          </dl>
+          <p className="muted">Sleep is shown for the day it ended.</p>
+        </section>
+        {muscles.length > 0 && <section className="public-panel" aria-labelledby="muscle-breakdown">
+          <div className="section-heading"><h2 id="muscle-breakdown">Working sets by muscle</h2></div>
+          <ul className="progress-lifts">{muscles.map(([name, count]) =>
+            <li key={name}><span>{name}</span><strong>{count}</strong></li>)}</ul>
+        </section>}
       </aside>
     </div>
   </>;

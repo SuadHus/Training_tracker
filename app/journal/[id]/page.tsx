@@ -17,7 +17,9 @@ export default async function JournalEntry({ params }: { params: Promise<{ id: s
       <p className="eyebrow"><time dateTime={post.day}>{displayDay(post.day)}</time></p>
       <h1>{post.title}</h1>
     </header>
-    <p className="prose">{post.body}</p>
-    {post.photos.map((photo) => <img key={photo.id} className="article-photo" src={`/api/photos/${photo.id}`} alt={photo.alt} loading="lazy" />)}
+    <div className="reading-content">
+      <p className="prose">{post.body}</p>
+      {post.photos.map((photo) => <img key={photo.id} className="article-photo" src={`/api/photos/${photo.id}`} alt={photo.alt} loading="lazy" />)}
+    </div>
   </article>;
 }

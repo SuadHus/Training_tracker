@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Plan workouts and record your training.",
     start_url: "/admin",
     display: "standalone",
-    theme_color: "#21291c",
-    background_color: "#f6f4ec",
+    theme_color: "#174b38",
+    background_color: "#f5f5ef",
     icons: [
       { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
       { src: "/icon-192.png", sizes: "192x192", type: "image/png" },

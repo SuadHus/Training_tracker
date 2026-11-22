@@ -24,7 +24,7 @@ export function idInput(raw: FormDataEntryValue | null) {
   if (typeof raw !== "string" || !/^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(raw)) {
     throw new TrainingInputError("Select a valid record.");
   }
-  return raw;
+  return raw.toLowerCase();
 }
 
 export function parseDate(raw: FormDataEntryValue | null) {
@@ -38,13 +38,41 @@ export function parseDate(raw: FormDataEntryValue | null) {
   return raw;
 }
 
-export function trainingDay() {
+export function trainingDay(now = new Date()) {
   return new Intl.DateTimeFormat("sv-SE", {
     timeZone: "Europe/Stockholm",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(new Date());
+  }).format(now);
+}
+
+export function workoutDate(form: FormData, now?: Date) {
+  return form.get("timing") === "today" ? trainingDay(now) : parseDate(form.get("local_day"));
+}
+
+type ExerciseSet = { id: string; exercise_id: string };
+
+export function groupExerciseSets<T extends ExerciseSet>(sets: readonly T[]) {
+  const groups: T[][] = [];
+  for (const set of sets) {
+    const last = groups.at(-1);
+    if (last?.[0].exercise_id === set.exercise_id) last.push(set);
+    else groups.push([set]);
+  }
+  return groups;
+}
+
+export function moveExerciseGroup<T extends ExerciseSet>(
+  sets: readonly T[], firstSetId: string, direction: "up" | "down", neighborId: string | null,
+) {
+  const groups = groupExerciseSets(sets);
+  const from = groups.findIndex((group) => group[0].id === firstSetId);
+  if (from === -1) throw new TrainingInputError("That exercise block changed. Try again.");
+  const to = from + (direction === "up" ? -1 : 1);
+  if (groups[to]?.[0].id !== neighborId) return sets;
+  [groups[from], groups[to]] = [groups[to], groups[from]];
+  return groups.flat();
 }
 
 export function numberInput(
