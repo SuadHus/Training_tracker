@@ -1,0 +1,116 @@
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .55rem 1rem;
+  margin-block: 1.25rem 2rem;
+}
+.nav a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  font-weight: 600;
+}
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: clamp(1.25rem, 5vw, 3.5rem);
+  align-items: start;
+}
+.section {
+  overflow-wrap: anywhere;
+  border-block-start: 1px solid var(--line, #d7d3c8);
+  padding-block: 1.25rem;
+  scroll-margin-top: 1rem;
+}
+.section h2, .section h3 { margin: 0 0 .65rem; }
+.section p { margin-block: .3rem .9rem; }
+.kicker {
+  font-size: .78rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.form {
+  display: grid;
+  gap: .85rem;
+  margin-block: .75rem;
+}
+.form label { min-width: 0; }
+.form input:not([type=checkbox]), .form textarea, .form select { width: 100%; min-width: 0; }
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(7rem, 100%), 1fr));
+  gap: .65rem;
+}
+.form label.check {
+  display: flex;
+  min-height: 44px;
+  gap: .65rem;
+  align-items: center;
+  width: fit-content;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+}
+.actions button { min-height: 44px; }
+.secondaryButton {
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--line, #d7d3c8);
+}
+.looseList, .entries {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+}
+.entries li { border-block-end: 1px solid var(--line, #d7d3c8); }
+.entries a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 50px;
+  gap: 1rem;
+  text-decoration: none;
+}
+.entries a:hover strong { text-decoration: underline; }
+.entries a time { font-size: .88rem; }
+.looseList li { margin-block: .35rem; }
+.error {
+  border-inline-start: .2rem solid #b93020;
+  padding: .65rem .9rem;
+  margin-block: 1.2rem;
+  overflow-wrap: anywhere;
+}
+.toggle { margin-block: .7rem; }
+.toggle summary {
+  display: list-item;
+  padding-block: .6rem;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+}
+.set {
+  border-block-start: 1px solid var(--line, #d7d3c8);
+  padding-block: .55rem;
+  scroll-margin-top: .5rem;
+}
+.set summary {
+  min-height: 44px;
+  list-style-position: inside;
+  padding-block: .6rem;
+  cursor: pointer;
+}
+.set summary small, .toggle summary small {
+  display: inline-block;
+  margin-inline-start: .45rem;
+  font-weight: normal;
+}
+.set h3 { font-size: 1rem; margin: .25rem 0; }
+.lastSet { font-size: .88rem; }
+@media (max-width: 44rem) {
+  .columns { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .form input, .form select, .form textarea { font-size: 16px; }
+}

@@ -1,0 +1,13 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: training
+      POSTGRES_USER: training
+      POSTGRES_PASSWORD: training-local
+    ports:
+      - "127.0.0.1:${TRAINING_DB_PORT:-55481}:5432"
+    volumes:
+      - training_data:/var/lib/postgresql/data
+volumes:
+  training_data:
