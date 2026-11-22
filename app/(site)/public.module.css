@@ -1,0 +1,143 @@
+/* Page layout for the public site. Tokens only; the shared classes come from globals.css. */
+
+.homeOpener { align-items: start; }
+.openerTop { align-items: start; }
+.openerBody { display: grid; gap: 0.75rem; min-width: 0; align-content: start; }
+.lede { max-width: 38rem; font-size: var(--text-m); color: var(--ink-soft); }
+.lede b { color: var(--ink); font-weight: 800; }
+
+@media (max-width: 39.99em) {
+  .bare > :first-child { display: none; }
+}
+
+.totals { color: var(--ink-soft); }
+.totals b { color: var(--ink); font-weight: 800; }
+
+/* Links stay 44px tall to touch without changing the rhythm of the page. */
+.tap { display: inline-flex; align-items: center; min-height: 2.75rem; margin-block: calc((1lh - 2.75rem) / 2); }
+.tapBlock { display: inline-block; padding-block: 0.6rem; margin-block: -0.6rem; }
+
+.weekHead { display: grid; gap: 0.75rem; align-content: start; min-width: 0; }
+
+.heaviest { margin-top: 0.6rem; }
+.heaviest b { font-weight: 800; }
+
+.today { padding: 0.1rem 0.3rem; margin: -0.1rem -0.3rem; background: var(--mark); color: var(--ink); }
+
+/* One session: title, the headline bar, then one line per exercise. */
+.session {
+  display: grid; min-width: 0; gap: 0.5rem 1.5rem;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "head" "bar" "lines";
+}
+.sessionHead { grid-area: head; min-width: 0; overflow-wrap: anywhere; }
+.sessionTitle { font-size: var(--text-l); font-weight: 800; line-height: 1.2; }
+.sessionBar { grid-area: bar; display: flex; align-items: center; min-width: 0; }
+.sessionBar :global(.bar) { height: 1.5rem; }
+.heroWide { display: none; }
+.lines { grid-area: lines; display: grid; gap: 0.2rem; min-width: 0; }
+.line { display: flex; flex-wrap: wrap; column-gap: 0.6rem; font-size: var(--text-s); }
+.runs { min-width: 0; }
+
+@media (min-width: 40em) {
+  .session {
+    grid-template-columns: minmax(0, 1fr) 9.5rem;
+    grid-template-areas: "head bar" "lines bar";
+  }
+  .sessionBar { align-self: start; min-height: 2.25rem; }
+  .sessionBar :global(.bar) { height: 2.25rem; }
+  .heroWide { display: block; }
+  .heroTight { display: none; }
+  .line { display: grid; grid-template-columns: minmax(0, 11rem) minmax(0, 1fr); column-gap: 1rem; }
+}
+
+/* Tables on the home page */
+th .tableWeek { font-size: var(--text-l); }
+.weekCell small { white-space: nowrap; }
+.sub { display: block; font-size: var(--text-s); color: var(--ink-soft); }
+.barCol { display: none; }
+.barInSet { display: block; margin-top: 0.3rem; }
+@media (min-width: 40em) {
+  .barCol { display: table-cell; width: 10rem; }
+  .barInSet { display: none; }
+}
+.footnote { margin-top: 0.6rem; font-size: var(--text-s); color: var(--ink-soft); }
+.after { margin-top: 0.25rem; }
+
+.journalTitle { font-size: var(--text-xl); font-weight: 800; line-height: 1.1; margin: 0.15rem 0 0.5rem; overflow-wrap: anywhere; text-wrap: balance; }
+.journalTitle a { text-decoration: none; display: inline-block; padding-block: 0.4rem; margin-block: -0.4rem; }
+.journalTitle a:hover { text-decoration: underline; text-decoration-thickness: 2px; }
+
+.yearRow { border-top-color: var(--hairline); padding-bottom: 0; margin-top: 2rem; }
+
+/* Journal */
+.entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem 1.5rem; align-items: start; }
+.thumb { display: block; width: 5rem; height: 5rem; object-fit: cover; }
+.photo { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: contain; background: var(--hairline); }
+@media (min-width: 40em) {
+  .thumb { width: 8rem; height: 6rem; }
+}
+
+/* Workout page */
+.plain { text-decoration: none; }
+.lead { margin-top: 1rem; font-size: var(--text-m); }
+.exNo { font-size: 1.75rem; font-weight: 800; line-height: 1; }
+.exHead { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 0.75rem 2rem; margin-bottom: 0.9rem; }
+.exTitle { min-width: 0; flex: 1 1 14rem; overflow-wrap: anywhere; }
+.meta { margin-top: 0.15rem; font-size: var(--text-s); color: var(--ink-soft); }
+.blockNotes { margin-top: 0.5rem; font-size: var(--text-s); color: var(--ink-soft); }
+.top { flex: 0 1 auto; max-width: 100%; }
+.top :global(.bar) { height: 3.25rem; }
+.top p { margin-top: 0.3rem; }
+@media (min-width: 40em) {
+  .top :global(.bar) { height: 4.5rem; }
+}
+
+.sets { table-layout: fixed; width: 16rem; }
+.sets caption { text-align: left; }
+.cSet { width: 1.75rem; }
+.cValue { width: 3.75rem; text-align: right; }
+.cReps { width: 3.55rem; }
+.cRpe { width: 2.5rem; }
+.cBar { width: 4.75rem; }
+@media (min-width: 40em) {
+  .sets { width: 19.5rem; }
+  .sets.withNotes { width: 100%; }
+  .cSet { width: 2.5rem; }
+  .cValue { width: 4.5rem; }
+  .cReps { width: 4.3rem; }
+  .cRpe { width: 3rem; }
+  .cBar { width: 5.5rem; }
+}
+.sets:global(.table) th, .sets:global(.table) td { padding-left: 0; padding-right: 0; vertical-align: middle; }
+.sets:global(.table) .cValue { text-align: right; }
+.sets:global(.table) td.cValue { font-weight: 800; }
+.sets:global(.table) td.cReps { padding-left: 0.6rem; color: var(--ink-soft); }
+.sets:global(.table) th.cReps { padding-left: 0.6rem; }
+.sets:global(.table) td.cRpe, .sets:global(.table) th.cRpe { padding-left: 0.5rem; }
+.sets:global(.table) td.cRpe { font-size: var(--text-s); font-weight: 700; }
+.sets:global(.table) td.cBar, .sets:global(.table) th.cBar { padding-left: 0.5rem; }
+.sets:global(.table) thead td.fillHead { padding: 0 0 0.35rem; border-bottom: 1px solid var(--rule); }
+.setNo { color: var(--ink-mute); font-weight: 500; }
+.sets:global(.table) tbody th.setNo { font-weight: 500; }
+.times { color: var(--ink-mute); padding-right: 0.3em; }
+.warmRow td, .warmRow th.setNo { color: var(--ink-mute); }
+.sets:global(.table) .warmRow td.cValue { font-weight: 400; }
+.sets:global(.table) .notes { padding-left: 0.75rem; }
+.sets:global(.table) td.notes { font-size: var(--text-s); min-width: 0; overflow-wrap: anywhere; }
+.sets:global(.table) tr.noteRow > * { border-top: 0; padding: 0 0 0.55rem; font-size: var(--text-s); }
+.notesCol { display: none; }
+.noteRow { display: table-row; }
+@media (min-width: 40em) {
+  .notesCol { display: table-cell; }
+  col.notesCol { display: table-column; }
+  .noteRow { display: none; }
+}
+.note b { font-weight: 800; }
+.sets:global(.table) td.bareNote { padding-left: 0; font-size: var(--text-s); overflow-wrap: anywhere; }
+
+.muscles { margin-top: 2rem; max-width: 20rem; }
+.neighbours { display: grid; }
+
+.stackTop { margin-top: 1rem; }
+.rootOpener { padding: 2rem 0 1.25rem; }

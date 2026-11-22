@@ -1,4 +1,10 @@
 import { query } from "./db";
+import {
+  collapseSets, isId, isoWeek, summarizeSets, topSet, weekStart,
+  type CustomValues, type Equipment, type ExerciseInfo, type FieldInfo, type Measures, type SetRun, type Tracking,
+  type WorkSummary,
+} from "./workout-doc";
+import { listFields } from "./workout-store";
 import { healthTimeZone, withingsMorningEndHour, withingsMorningStartHour } from "./health-normalize";
 
 export const withingsMorningWeight = `o.provider = 'withings' AND o.metric = 'body_weight_kg'
@@ -6,69 +12,216 @@ export const withingsMorningWeight = `o.provider = 'withings' AND o.metric = 'bo
   AND extract(hour FROM o.observed_at AT TIME ZONE '${healthTimeZone}') >= ${withingsMorningStartHour}
   AND extract(hour FROM o.observed_at AT TIME ZONE '${healthTimeZone}') < ${withingsMorningEndHour}`;
 
-export type WorkoutSummary = {
-  id: string;
-  title: string;
-  day: string;
-  work_sets: number;
-  tonnage: number;
+
+const loggedMeasures = `s.reps, s.load_kg::float8 AS load, s.rpe::float8 AS rpe,
+  s.duration_seconds::float8 AS duration, s.distance_meters::float8 AS distance`;
+
+type MeasureRow = {
+  reps: number | null; load: number | null; rpe: number | null; duration: number | null; distance: number | null;
 };
 
-const recorded = `(s.logged_at IS NOT NULL OR s.reps IS NOT NULL OR s.load_kg IS NOT NULL
-  OR s.rpe IS NOT NULL OR s.distance_meters IS NOT NULL OR s.duration_seconds IS NOT NULL
-  OR s.custom_values <> '{}'::jsonb)`;
+const measuresOf = (row: MeasureRow): Measures => ({
+  reps: row.reps, load: row.load, rpe: row.rpe, duration: row.duration, distance: row.distance,
+});
 
-export async function publicWorkouts(limit?: number) {
-  const { rows } = await query<WorkoutSummary>(
-    `SELECT w.id, w.title, w.local_day::text AS day,
-        count(s.id) FILTER (WHERE NOT s.warmup)::int AS work_sets,
-        coalesce(sum(s.reps * s.load_kg) FILTER (WHERE NOT s.warmup), 0)::float8 AS tonnage
-      FROM workouts w LEFT JOIN workout_sets s ON s.workout_id = w.id AND ${recorded}
-      WHERE w.status = 'completed' GROUP BY w.id
-      ORDER BY w.local_day DESC, w.id LIMIT $1`,
-    [limit ?? null],
-  );
-  return rows;
+export type PublicExercise = Pick<ExerciseInfo, "id" | "name" | "tracking" | "equipment" | "barKg" | "primaryMuscle" | "secondaryMuscles">;
+export type PublicSet = { id: string; warmup: boolean; measures: Measures; custom: CustomValues };
+export type PublicBlock = { id: string; exercise: PublicExercise; notes: string; sets: PublicSet[] };
+export type PublicWorkout = {
+  id: string; title: string; day: string; notes: string; minutes: number | null; blocks: PublicBlock[];
+  fields: FieldInfo[]; vitals: DailyVitals; summary: WorkSummary; muscles: Array<{ name: string; sets: number }>;
+  newer: { id: string; title: string; day: string } | null; older: { id: string; title: string; day: string } | null;
+};
+
+const exerciseFields = `e.id AS exercise_id, e.name, e.tracking, e.equipment, e.bar_kg::float8 AS bar_kg,
+  e.primary_muscle, e.secondary_muscles`;
+
+type ExerciseFieldsRow = {
+  exercise_id: string; name: string; tracking: Tracking; equipment: Equipment; bar_kg: number | null;
+  primary_muscle: string; secondary_muscles: string[];
+};
+
+const publicExercise = (row: ExerciseFieldsRow): PublicExercise => ({
+  id: row.exercise_id, name: row.name, tracking: row.tracking, equipment: row.equipment, barKg: row.bar_kg,
+  primaryMuscle: row.primary_muscle, secondaryMuscles: row.secondary_muscles,
+});
+
+/** Whole minutes between the first and last logged set; anything outside 5 to 360 is a forgotten timer, not a session. */
+function sessionMinutes(start: Date | null, end: Date | null): number | null {
+  if (!start || !end) return null;
+  const minutes = (end.valueOf() - start.valueOf()) / 60_000;
+  return minutes >= 5 && minutes <= 360 ? Math.round(minutes) : null;
 }
 
-type PublicSet = {
-  id: string;
-  exercise_id: string;
-  exercise: string;
-  exercise_type: string;
-  primary_muscle: string;
-  secondary_muscles: string[];
-  reps: number | null;
-  load_kg: number | null;
-  rpe: number | null;
-  duration_seconds: number | null;
-  distance_meters: number | null;
-  warmup: boolean;
-  custom_values: Record<string, unknown>;
-};
+const sessionOrder = "coalesce(started_at, completed_at, created_at)";
 
-export async function publicWorkout(id: string) {
-  const { rows: [workout] } = await query<{ id: string; day: string; title: string; notes: string }>(
-    "SELECT id, local_day::text AS day, title, notes FROM workouts WHERE id = $1 AND status = 'completed'",
+type Neighbour = { id: string; title: string; day: string };
+
+export async function publicWorkout(id: string): Promise<PublicWorkout | null> {
+  if (!isId(id)) return null;
+  const { rows: [workout] } = await query<{
+    id: string; day: string; title: string; notes: string; started_at: Date | null; first_logged: Date | null;
+    last_logged: Date | null;
+  }>(
+    `SELECT w.id, w.local_day::text AS day, w.title, w.notes, w.started_at,
+        (SELECT min(logged_at) FROM workout_sets WHERE workout_id = w.id) AS first_logged,
+        (SELECT max(logged_at) FROM workout_sets WHERE workout_id = w.id) AS last_logged
+      FROM workouts w WHERE w.id = $1 AND w.status = 'completed'`,
     [id],
   );
   if (!workout) return null;
-  const [{ rows: sets }, { rows: fields }, vitals] = await Promise.all([
-    query<PublicSet>(
-      `SELECT s.id, e.id AS exercise_id, e.name AS exercise, e.type AS exercise_type,
-          e.primary_muscle, e.secondary_muscles, s.reps, s.load_kg::float8, s.rpe::float8,
-          s.duration_seconds::float8, s.distance_meters::float8, s.warmup, s.custom_values
-        FROM workout_sets s JOIN exercises e ON e.id = s.exercise_id
-        JOIN workouts w ON w.id = s.workout_id AND w.status = 'completed'
-        WHERE s.workout_id = $1 AND ${recorded}
-        ORDER BY s.position, s.id`, [id],
+
+  const [{ rows }, fields, vitals, { rows: [older] }, { rows: [newer] }] = await Promise.all([
+    query<ExerciseFieldsRow & MeasureRow & {
+      block_id: string; block_notes: string; set_id: string; warmup: boolean; custom_values: CustomValues;
+    }>(
+      `SELECT b.id AS block_id, b.notes AS block_notes, ${exerciseFields}, s.id AS set_id, s.warmup, s.custom_values,
+          ${loggedMeasures}
+        FROM workout_exercises b JOIN exercises e ON e.id = b.exercise_id
+        JOIN workout_sets s ON s.workout_exercise_id = b.id AND s.logged_at IS NOT NULL
+        WHERE b.workout_id = $1 ORDER BY b.position, b.id, s.position, s.id`, [id],
     ),
-    query<{ id: string; label: string; unit: string; exercise_id: string | null }>(
-      "SELECT id, label, unit, exercise_id FROM field_definitions ORDER BY label, id",
-    ),
+    listFields(),
     dailyVitals(workout.day),
+    query<Neighbour>(
+      `SELECT id, title, local_day::text AS day FROM workouts
+        WHERE status = 'completed' AND (local_day, ${sessionOrder}, id) < (SELECT local_day, ${sessionOrder}, id FROM workouts WHERE id = $1)
+        ORDER BY local_day DESC, ${sessionOrder} DESC, id DESC LIMIT 1`, [id],
+    ),
+    query<Neighbour>(
+      `SELECT id, title, local_day::text AS day FROM workouts
+        WHERE status = 'completed' AND (local_day, ${sessionOrder}, id) > (SELECT local_day, ${sessionOrder}, id FROM workouts WHERE id = $1)
+        ORDER BY local_day, ${sessionOrder}, id LIMIT 1`, [id],
+    ),
   ]);
-  return { ...workout, sets, fields, vitals };
+
+  const blocks: PublicBlock[] = [];
+  for (const row of rows) {
+    let block = blocks.at(-1);
+    if (block?.id !== row.block_id) {
+      block = { id: row.block_id, exercise: publicExercise(row), notes: row.block_notes, sets: [] };
+      blocks.push(block);
+    }
+    block.sets.push({ id: row.set_id, warmup: row.warmup, measures: measuresOf(row), custom: row.custom_values });
+  }
+
+  const working = rows.filter((row) => !row.warmup);
+  const muscles = new Map<string, number>();
+  for (const row of working) muscles.set(row.primary_muscle, (muscles.get(row.primary_muscle) ?? 0) + 1);
+
+  return {
+    id: workout.id, title: workout.title, day: workout.day, notes: workout.notes,
+    minutes: sessionMinutes(workout.started_at ?? workout.first_logged, workout.last_logged),
+    blocks, fields, vitals,
+    summary: summarizeSets(rows.map((row) => ({ warmup: row.warmup, actual: measuresOf(row), loggedAt: "logged" }))),
+    muscles: [...muscles].map(([name, sets]) => ({ name, sets })).sort((a, b) => b.sets - a.sets || a.name.localeCompare(b.name)),
+    newer: newer ?? null,
+    older: older ?? null,
+  };
+}
+
+export type SessionBlock = { exercise: PublicExercise; runs: SetRun[]; top: Measures | null };
+export type SessionSummary = {
+  id: string; title: string; day: string; minutes: number | null; workSets: number; volume: number; blocks: SessionBlock[];
+};
+export type WeekSummary = {
+  year: number; week: number; start: string; sessions: SessionSummary[]; workSets: number; volume: number;
+};
+
+export async function publicWeeks(options: { limit?: number } = {}): Promise<WeekSummary[]> {
+  const { rows: workouts } = await query<{ id: string; title: string; day: string; started_at: Date | null }>(
+    `WITH weeks AS (
+        SELECT DISTINCT date_trunc('week', local_day)::date AS start FROM workouts
+        WHERE status = 'completed' ORDER BY start DESC LIMIT $1
+      )
+      SELECT w.id, w.title, w.local_day::text AS day, w.started_at
+        FROM workouts w JOIN weeks ON w.local_day >= weeks.start AND w.local_day < weeks.start + 7
+        WHERE w.status = 'completed'
+        ORDER BY w.local_day, coalesce(w.started_at, w.completed_at, w.created_at), w.id`,
+    [options.limit ?? null],
+  );
+  if (!workouts.length) return [];
+  const { rows: sets } = await query<ExerciseFieldsRow & MeasureRow & {
+    workout_id: string; block_id: string; warmup: boolean; logged_at: Date;
+  }>(
+    `SELECT s.workout_id, s.workout_exercise_id AS block_id, ${exerciseFields}, s.warmup, s.logged_at, ${loggedMeasures}
+      FROM workout_sets s JOIN exercises e ON e.id = s.exercise_id
+      WHERE s.workout_id = ANY($1::uuid[]) AND s.logged_at IS NOT NULL ORDER BY s.workout_id, s.position, s.id`,
+    [workouts.map((workout) => workout.id)],
+  );
+
+  const byWorkout = Map.groupBy(sets, (set) => set.workout_id);
+  const weeks = new Map<string, WeekSummary>();
+  for (const workout of workouts) {
+    const own = byWorkout.get(workout.id) ?? [];
+    const stamps = own.map((set) => set.logged_at);
+    const first = stamps.length ? new Date(Math.min(...stamps.map(Number))) : null;
+    const last = stamps.length ? new Date(Math.max(...stamps.map(Number))) : null;
+    const asDocs = own.map((set) => ({ warmup: set.warmup, actual: measuresOf(set), loggedAt: set.logged_at.toISOString() }));
+    const total = summarizeSets(asDocs);
+
+    const blocks: SessionBlock[] = [];
+    for (const [, group] of Map.groupBy(own.filter((set) => !set.warmup), (set) => set.block_id)) {
+      const work = group.map((set) => ({ warmup: false, actual: measuresOf(set), loggedAt: "logged" }));
+      const top = topSet(work);
+      blocks.push({
+        exercise: publicExercise(group[0]),
+        runs: collapseSets(work.map((set) => ({ measures: set.actual, warmup: false }))),
+        top: top ? top.actual : null,
+      });
+    }
+
+    const start = weekStart(workout.day);
+    let week = weeks.get(start);
+    if (!week) {
+      week = { ...isoWeek(start), start, sessions: [], workSets: 0, volume: 0 };
+      weeks.set(start, week);
+    }
+    week.sessions.push({
+      id: workout.id, title: workout.title, day: workout.day, minutes: sessionMinutes(workout.started_at ?? first, last),
+      workSets: total.workSets, volume: total.volume, blocks,
+    });
+    week.workSets += total.workSets;
+    week.volume += total.volume;
+  }
+  return [...weeks.values()].sort((a, b) => b.start.localeCompare(a.start));
+}
+
+export type BestLift = {
+  exerciseId: string; name: string; equipment: Equipment; barKg: number | null; load: number; reps: number;
+  estimate: number; day: string; workoutId: string;
+};
+
+export async function publicBestLifts(limit = 6): Promise<BestLift[]> {
+  const { rows } = await query<{
+    exercise_id: string; name: string; equipment: Equipment; bar_kg: number | null; load: number; reps: number;
+    estimate: number; day: string; workout_id: string;
+  }>(
+    `SELECT * FROM (
+        SELECT DISTINCT ON (e.id) e.id AS exercise_id, e.name, e.equipment, e.bar_kg::float8 AS bar_kg,
+            s.load_kg::float8 AS load, s.reps,
+            (s.load_kg * CASE WHEN s.reps = 1 THEN 1 ELSE 1 + s.reps / 30.0 END)::float8 AS estimate,
+            w.local_day::text AS day, w.id AS workout_id
+          FROM workout_sets s JOIN workouts w ON w.id = s.workout_id AND w.status = 'completed'
+          JOIN exercises e ON e.id = s.exercise_id
+          WHERE s.logged_at IS NOT NULL AND NOT s.warmup AND s.load_kg > 0 AND s.reps BETWEEN 1 AND 10
+            AND e.tracking = 'weight_reps' AND e.equipment = 'barbell'
+          ORDER BY e.id, estimate DESC, w.local_day DESC, s.id
+      ) best ORDER BY estimate DESC, name, exercise_id LIMIT $1`,
+    [limit],
+  );
+  return rows.map((row) => ({
+    exerciseId: row.exercise_id, name: row.name, equipment: row.equipment, barKg: row.bar_kg, load: row.load,
+    reps: row.reps, estimate: row.estimate, day: row.day, workoutId: row.workout_id,
+  }));
+}
+
+export async function publicTotals(): Promise<{ sessions: number; firstDay: string | null; lastDay: string | null }> {
+  const { rows: [row] } = await query<{ sessions: number; first_day: string | null; last_day: string | null }>(
+    `SELECT count(*)::int AS sessions, min(local_day)::text AS first_day, max(local_day)::text AS last_day
+      FROM workouts WHERE status = 'completed'`,
+  );
+  return { sessions: row.sessions, firstDay: row.first_day, lastDay: row.last_day };
 }
 
 export type DailyVitals = {
@@ -118,32 +271,4 @@ export async function publicJournalPost(id: string) {
       WHERE p.post_id = $1 AND j.published_at <= now() ORDER BY p.created_at, p.id`, [id],
   );
   return { ...post, photos };
-}
-
-export async function publicProgress() {
-  const [{ rows: weeks }, { rows: lifts }] = await Promise.all([
-    query<{ day: string; tonnage: number; sessions: number; work_sets: number }>(
-      `WITH weeks AS (
-        SELECT generate_series(date_trunc('week', now() AT TIME ZONE 'Europe/Stockholm') - interval '5 weeks',
-          date_trunc('week', now() AT TIME ZONE 'Europe/Stockholm'), interval '1 week')::date AS day
-      )
-      SELECT week.day::text, coalesce(sum(s.reps * s.load_kg), 0)::float8 AS tonnage,
-        count(DISTINCT w.id)::int AS sessions, count(s.id)::int AS work_sets
-      FROM weeks week LEFT JOIN workouts w ON w.status = 'completed' AND w.local_day >= week.day AND w.local_day < week.day + 7
-      LEFT JOIN workout_sets s ON s.workout_id = w.id AND NOT s.warmup AND ${recorded}
-      GROUP BY week.day ORDER BY week.day`,
-    ),
-    query<{ id: string; name: string; weight: number; reps: number; estimate: number }>(
-      `SELECT id, name, weight, reps, estimate FROM (
-        SELECT DISTINCT ON (e.id) e.id, e.name, s.load_kg::float8 AS weight, s.reps,
-          (s.load_kg * CASE WHEN s.reps = 1 THEN 1 ELSE 1 + s.reps / 30.0 END)::float8 AS estimate,
-          w.local_day
-        FROM workout_sets s JOIN workouts w ON w.id = s.workout_id
-        JOIN exercises e ON e.id = s.exercise_id
-        WHERE w.status = 'completed' AND NOT s.warmup AND s.load_kg > 0 AND s.reps BETWEEN 1 AND 10
-        ORDER BY e.id, estimate DESC, w.local_day DESC, s.id
-      ) best ORDER BY local_day DESC, name LIMIT 8`,
-    ),
-  ]);
-  return { weeks, lifts };
 }

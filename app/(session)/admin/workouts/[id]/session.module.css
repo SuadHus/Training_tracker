@@ -1,0 +1,327 @@
+/* The session screen: one column held in one hand. Tokens only. */
+
+.app {
+  width: 100%;
+  max-width: 40rem;
+  margin: 0 auto;
+  min-height: 100dvh;
+  padding-bottom: 4rem;
+}
+.app[data-mode="log"] { padding-bottom: calc(9.5rem + env(safe-area-inset-bottom)); }
+
+/* Top bar ------------------------------------------------------------------ */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.375rem 0.5rem 0.375rem 0.25rem;
+  background: var(--ground);
+  border-top: 4px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+.titleBox { flex: 1 1 0; min-width: 0; }
+.title {
+  display: block;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0.125rem 0.5rem;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  line-height: 1.15;
+}
+.title:hover { background: var(--wash); }
+.title b {
+  display: block;
+  font-size: var(--text-l);
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.title > span { display: block; font-size: var(--text-xs); color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.elapsed { flex: none; padding: 0 var(--gutter) 0 0.5rem; font-size: var(--text-s); font-weight: 700; line-height: 1; white-space: nowrap; }
+.startForm { display: flex; }
+
+/* The sync line holds its height whatever it says. */
+/* One line is reserved. A longer message is drawn over the blank space above the first exercise. */
+.status { position: relative; z-index: 4; display: flex; align-items: center; height: 1.75rem; }
+.statusText {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 1.75rem;
+  padding: 0.2rem var(--gutter);
+  font-size: var(--text-xs);
+  line-height: 1.25;
+  color: var(--ink-soft);
+  background: var(--ground);
+  overflow-wrap: anywhere;
+}
+.statusLong, .statusAlert { position: absolute; inset: 0 0 auto 0; display: block; }
+.statusAlert { color: var(--ink); font-weight: 700; background: var(--wash); }
+.retry {
+  white-space: nowrap;
+  position: relative;
+  display: inline;
+  padding: 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-weight: 800;
+  color: var(--ink);
+  text-decoration: underline;
+}
+.retry::after { content: ""; position: absolute; inset: -0.9rem -0.5rem; }
+
+.content { padding-top: 0; }
+.content > :global(.notice) { margin: 0.25rem var(--gutter) 0; }
+.teach { max-width: 28rem; padding: 1.5rem var(--gutter) 0.5rem; color: var(--ink-soft); }
+
+/* Exercise blocks ---------------------------------------------------------------- */
+
+.block { padding: 1.25rem 0 0.25rem; }
+.block:first-child { padding-top: 0.75rem; }
+.block + .block { border-top: 1px solid var(--hairline); }
+.block > section { scroll-margin-top: 4.5rem; }
+.exHead {
+  display: grid;
+  grid-template-columns: 1.75rem minmax(0, 1fr) auto;
+  column-gap: 0.25rem;
+  align-items: center;
+  padding: 0 0.5rem 0 var(--gutter);
+}
+.exNo { font-size: var(--text-l); font-weight: 800; line-height: 1; }
+.exName { font-size: var(--text-l); line-height: 1.15; overflow-wrap: anywhere; }
+.exInfo { grid-column: 2 / 4; padding-right: 0.5rem; margin-top: -0.2rem; }
+.exLast, .exNotes { font-size: var(--text-s); color: var(--ink-soft); }
+.exLast { overflow-wrap: anywhere; }
+.exNotes { white-space: pre-wrap; overflow-wrap: anywhere; }
+.exLast + .exNotes { margin-top: 0.15rem; }
+
+/* The set table ---------------------------------------------------------------- */
+
+.sets { width: 100%; margin-top: 0.4rem; table-layout: fixed; border-collapse: collapse; }
+.sets th, .sets td { padding: 0; text-align: left; font-weight: 400; vertical-align: middle; }
+.sets thead th {
+  padding: 0.35rem 0.125rem;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--ink-soft);
+  border-bottom: 1px solid var(--rule);
+  white-space: nowrap;
+}
+.sets tr > :first-child { padding-left: var(--gutter); }
+.sets tr > td:last-child, .sets tr > th:last-child { padding-right: var(--gutter); }
+.sets thead th:first-child { padding-left: var(--gutter); }
+.center { text-align: center !important; }
+.colSet { width: calc(var(--tap) + var(--gutter)); }
+.colPrev { width: 4.5rem; }
+.colDone { width: calc(var(--tap) + var(--gutter)); }
+
+.sets .setRow > * { padding-top: 0.3rem; padding-bottom: 0.3rem; border-top: 1px solid var(--hairline); }
+.sets tbody tr:first-child > * { border-top: 0; }
+.setCell { width: auto; }
+.sets td.inputCell { padding-left: 0.125rem; padding-right: 0.125rem; }
+.sets tr > td.inputCell:last-child { padding-right: var(--gutter); }
+.sets td.prevCell { padding-right: 0.25rem; }
+
+.setNo {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  font-size: var(--text-m);
+  font-weight: 700;
+}
+.prev {
+  display: block;
+  width: 100%;
+  min-height: var(--tap);
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  text-align: left;
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+  overflow: hidden;
+}
+.prev > span { display: block; overflow: hidden; text-overflow: ellipsis; }
+.prev :global(.load) { font-weight: 500; }
+.prev:hover:not(:disabled) { background: var(--wash); }
+.noPrev { color: var(--ink-mute); }
+
+.input {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: var(--tap);
+  padding: 0 0.125rem;
+  font: 700 1.125rem/1 var(--font);
+  text-align: center;
+  color: var(--ink);
+  background: var(--ground);
+  border: 1px solid var(--ink-mute);
+  border-radius: 0;
+  scroll-margin: 7rem 0 10rem;
+}
+.input::placeholder { font-weight: 600; }
+.input:hover { border-color: var(--ink); }
+.input:focus-visible { outline-offset: 0; border-color: var(--ink); }
+.input[aria-invalid="true"] { border: 2px dashed var(--ink); }
+.rpe { font-weight: 500; }
+.rpe::placeholder { font-weight: 400; font-size: var(--text-s); }
+
+.done {
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  color: transparent;
+  background: var(--ground);
+  border: 1px solid var(--ink-mute);
+  border-radius: 0;
+}
+.done svg { stroke-width: 3; stroke-linecap: butt; }
+.done:hover { border-color: var(--ink); }
+
+/* Logged: a black square with a white tick; the numbers settle to plain text. */
+.setRow[data-state="logged"] .setNo { font-weight: 400; color: var(--ink-mute); }
+.setRow[data-state="logged"] .prev,
+.setRow[data-state="logged"] .noPrev { color: var(--ink-mute); }
+.setRow[data-state="logged"] .input { font-weight: 400; color: var(--ink-soft); background: transparent; border-color: transparent; }
+.setRow[data-state="logged"] .input:hover { border-color: var(--ink-mute); }
+.setRow[data-state="logged"] .done { color: var(--ground); background: var(--ink); border-color: var(--ink); }
+
+/* Next: the marker on the whole row, the set number inverted, heavy borders. */
+.setRow[data-state="next"] > *,
+.callout > * { background: var(--mark); color: var(--ink); }
+.setRow[data-state="next"] > * { border-top-color: var(--mark); }
+.setRow[data-state="next"] .setNo { background: var(--ink); color: var(--ground); font-weight: 800; }
+.setRow[data-state="next"] .prev { color: var(--ink); }
+.setRow[data-state="next"] .prev:hover:not(:disabled) { background: var(--mark); text-decoration: underline; }
+.setRow[data-state="next"] .input { border: 2px solid var(--ink); }
+.setRow[data-state="next"] .input[aria-invalid="true"] { border-style: dashed; }
+/* What a tap on done will log is the most important number on the screen: set it in ink. */
+.setRow[data-state="next"] .input::placeholder { color: var(--ink); font-weight: 800; }
+.setRow[data-state="next"] .rpe::placeholder { color: var(--ink-soft); font-weight: 400; }
+.setRow[data-state="next"] .done { border: 2px solid var(--ink); }
+
+.setRow, .callout { scroll-margin-bottom: 7rem; }
+.callout > * { padding: 0.15rem var(--gutter) 0.8rem; border-top: 0; }
+.calloutBody { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 0.9rem; }
+.calloutBody :global(.per-side) { color: var(--ink); line-height: 1.3; }
+.plates { font-size: var(--text-m); font-weight: 800; line-height: 1.25; overflow-wrap: anywhere; }
+.noPlates { font-weight: 700; }
+
+.addSet { border-top: 1px solid var(--hairline); text-decoration: none; }
+.addSet:hover:not(:disabled) { text-decoration: none; }
+.addExercise { width: calc(100% - 2 * var(--gutter)); margin: 1.5rem var(--gutter) 0; }
+
+/* Menus --------------------------------------------------------------------- */
+
+.menuWrap { position: relative; display: inline-block; }
+.menuPanel { top: 100%; min-width: 14rem; white-space: nowrap; }
+.menuEnd { right: 0; }
+.menuStart { left: 0; }
+.menuUp { top: auto; bottom: 100%; }
+
+/* Rest bar ---------------------------------------------------------------- */
+
+.rest {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 6;
+  padding: 0 0.75rem calc(0.75rem + env(safe-area-inset-bottom));
+  background: var(--ink);
+  color: var(--ground);
+}
+.restLine { height: 4px; margin: 0 -0.75rem; background: var(--ink-soft); }
+.restLine i { display: block; height: 100%; background: var(--ground); }
+.restInner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 40rem;
+  margin: 0 auto;
+  padding-top: 0.5rem;
+}
+.restTime { line-height: 1; min-width: 0; }
+.restTime > span { display: block; font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; }
+.restTime > .restOver, .restTime > span.restOver { font-size: var(--text-l); letter-spacing: 0; padding-bottom: 0.2rem; }
+.restTime small { display: block; margin-top: 0.25rem; font-size: var(--text-xs); line-height: 1.25; font-weight: 400; color: var(--hairline); }
+.restBtn {
+  min-height: var(--tap);
+  padding: 0 0.7rem;
+  font-size: 1rem;
+  font-weight: 800;
+  white-space: nowrap;
+  color: var(--ground);
+  background: var(--ink);
+  border: 2px solid var(--ground);
+  border-radius: 0;
+}
+.restBtn:disabled { color: var(--ink-mute); border-color: var(--ink-mute); }
+.restBtn:hover:not(:disabled) { background: var(--ink-soft); }
+.restSkip { color: var(--ink); background: var(--ground); }
+.restSkip:hover:not(:disabled) { background: var(--hairline); }
+.rest :focus-visible { outline-color: var(--ground); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .restLine i { transition: width 300ms linear; }
+}
+
+/* Sheets ------------------------------------------------------------------ */
+
+.sheetForm { display: grid; gap: 1rem; }
+.sheetActions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding-top: 0.25rem; }
+.sheetFields { display: grid; grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr)); gap: 1rem; }
+.quick { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.quick button { min-height: var(--tap); }
+.quick button[aria-pressed="true"] { background: var(--ink); color: var(--ground); }
+
+.pickerSearch {
+  position: sticky;
+  top: -1rem;
+  z-index: 1;
+  margin: -1rem -1rem 0;
+  padding: 1rem;
+  background: var(--ground);
+  border-bottom: 1px solid var(--rule);
+}
+.searchBox { position: relative; }
+.searchBox .field { padding-right: var(--tap); }
+.clear { position: absolute; top: 0; right: 0; }
+.createForm .trackingChoice { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+.createForm .trackingChoice label + label span { border-left: 0; }
+.createForm .trackingChoice label:nth-child(even) span { border-left: 1px solid var(--ink); }
+.createForm .trackingChoice label:nth-child(n + 3) span { border-top: 1px solid var(--ink); }
+.pickList li + li { border-top: 1px solid var(--hairline); }
+.pick {
+  display: block;
+  width: 100%;
+  min-height: 3.25rem;
+  padding: 0.5rem 0;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+.pick:hover:not(:disabled) { background: var(--wash); }
+.pick:disabled { color: var(--ink-mute); }
+.pick b { display: block; font-weight: 800; overflow-wrap: anywhere; }
+.pick span { display: block; font-size: var(--text-s); color: var(--ink-soft); }
+.pick:disabled span { color: var(--ink-mute); }
+.createForm { display: grid; gap: 1rem; margin-top: 0.75rem; padding-top: 1rem; border-top: 3px solid var(--rule); }
+.createTitle { font-size: var(--text-m); font-weight: 800; overflow-wrap: anywhere; }

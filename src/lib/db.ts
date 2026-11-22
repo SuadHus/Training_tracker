@@ -4,10 +4,15 @@ const processGlobal = globalThis as typeof globalThis & { trainingPool?: Pool };
 
 function database() {
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required.");
-  processGlobal.trainingPool ??= new Pool({
-    connectionString: process.env.DATABASE_URL,
-    connectionTimeoutMillis: 5000,
-  });
+  if (!processGlobal.trainingPool) {
+    processGlobal.trainingPool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      connectionTimeoutMillis: 5000,
+    });
+    // An idle connection the database closed is dropped by the pool. Without a
+    // listener that event would end the whole process.
+    processGlobal.trainingPool.on("error", () => {});
+  }
   return processGlobal.trainingPool;
 }
 
