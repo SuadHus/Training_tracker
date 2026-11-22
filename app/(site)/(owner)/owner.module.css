@@ -150,3 +150,21 @@
 
 .item:has(.asking) { grid-template-columns: minmax(0, 1fr); }
 .item:has(.asking) .actions { justify-content: flex-start; }
+
+/* Import from a spreadsheet -------------------------------------------------- */
+
+.paste { min-height: 11rem; white-space: pre; overflow: auto; tab-size: 12; font-size: var(--text-s); }
+.sheetHint { margin-top: 0.6rem; max-width: 40rem; font-size: var(--text-s); color: var(--ink-soft); }
+.sheetLines { display: grid; margin-top: 0.9rem; }
+.sheetLines li {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 1rem; padding: 0.45rem 0;
+  border-top: 1px solid var(--hairline); font-size: var(--text-s);
+}
+.sheetName { font-weight: 700; overflow-wrap: anywhere; }
+.sheetRows { color: var(--ink-soft); overflow-wrap: anywhere; }
+.sheetNote { grid-column: 1 / -1; color: var(--ink-mute); overflow-wrap: anywhere; }
+.sheetOff .sheetLines { color: var(--ink-mute); }
+.sheetOff .sheetName { font-weight: 400; }
+@media (min-width: 40em) {
+  .sheetLines li { grid-template-columns: minmax(0, 15rem) minmax(0, 1fr); }
+}

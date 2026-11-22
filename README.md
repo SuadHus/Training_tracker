@@ -29,6 +29,7 @@ A workout is an ordered list of exercises, and each exercise holds its sets. Tem
 
 - **Exercises** live in the library (**Exercises**). Each one says what a set of it records (weight and reps, bodyweight reps, time, or distance and time), what it is loaded with, and its default rest. Barbell exercises get their loads drawn as plates on the bar. *Add the common lifts* fills an empty library in one step. Exercises that have history are archived, not deleted.
 - **Templates** are workouts you repeat. Give each exercise its target sets: reps or a range such as 8–12, a load, a target RPE, warm-up sets, rest and notes. Start a template from the desk in one tap, or plan it for another day.
+- **Import from a spreadsheet** (under Templates) turns rows copied from Excel or Sheets into templates: one exercise per row with sets, reps and a load, an RPE or a remark. Workouts side by side and weeks stacked under each other become separate templates, and exercises the library does not know are added.
 - **Extra set fields** add something to record on a set, such as bar speed, for every exercise or for one.
 
 ## Logging a session

@@ -736,3 +736,33 @@ test("session minutes are tested before rounding", { skip }, async () => {
   assert.equal(await span(21600), 360);
   assert.equal(await span(21624), null);
 });
+
+test("a pasted sheet becomes templates, and exercises are added once", { skip }, async () => {
+  await reset();
+  const sheet = ["Squat\t3\t5\t100", "Squat\t1\t3\t110", "Pullups\t3\t6-8\tbw+5kg", "Side planks\t1\t60\teach side", "", "", "Pullups\t2\t5\tRPE9"].join("\n");
+  const before = (await store.listExercises({ includeArchived: true })).length;
+
+  const made = await store.importTemplates(sheet, [{ index: 0, title: "Day one" }, { index: 1, title: " Day two " }]);
+  assert.deepEqual(made.templates.map(({ title, exercises, sets }) => [title, exercises, sets]), [["Day one", 3, 8], ["Day two", 1, 2]]);
+  assert.deepEqual(made.newExercises, ["Pullups", "Side planks"]);
+  assert.equal((await store.listExercises({ includeArchived: true })).length, before + 2);
+
+  const doc = (await store.loadWorkout(made.templates[0].id))!;
+  assert.deepEqual([doc.status, doc.day, doc.blocks[0].exerciseId], ["template", null, squat.id]);
+  assert.deepEqual(doc.blocks[0].sets.map((set) => [set.target.load, set.target.reps]), [[100, 5], [100, 5], [100, 5], [110, 3]]);
+  assert.deepEqual(doc.blocks[1].sets.map((set) => [set.target.load, set.target.reps, set.target.repsMax]), [[5, 6, 8], [5, 6, 8], [5, 6, 8]]);
+  assert.deepEqual([doc.blocks[2].sets[0].target.duration, doc.blocks[2].notes], [60, "each side"]);
+
+  // A second paste reuses the exercises and leaves the first templates alone.
+  const again = await store.importTemplates(sheet, [{ index: 1, title: "Day two again" }]);
+  assert.deepEqual(again.newExercises, []);
+  assert.equal((await store.listExercises({ includeArchived: true })).length, before + 2);
+  assert.equal((await store.loadWorkout(made.templates[0].id))!.revision, doc.revision);
+
+  await assert.rejects(store.importTemplates(sheet, [{ index: 9, title: "Nope" }]), WorkoutInputError);
+  await assert.rejects(store.importTemplates(sheet, [{ index: 0, title: "" }]), WorkoutInputError);
+  await assert.rejects(store.importTemplates(sheet, [{ index: 0, title: "A" }, { index: 0, title: "B" }]), WorkoutInputError);
+  await assert.rejects(store.importTemplates("", [{ index: 0, title: "A" }]), WorkoutInputError);
+  await assert.rejects(store.importTemplates(sheet, []), WorkoutInputError);
+});
+

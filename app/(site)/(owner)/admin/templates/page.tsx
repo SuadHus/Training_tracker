@@ -57,7 +57,10 @@ export default async function Templates({ searchParams }: { searchParams: Promis
             <label className="label" htmlFor="template-name">Name</label>
             <input id="template-name" className="field" name="title" maxLength={120} required autoComplete="off" />
           </div>
-          <div className="form-actions"><SubmitButton pending="Creating">Create template</SubmitButton></div>
+          <div className="form-actions">
+            <SubmitButton pending="Creating">Create template</SubmitButton>
+            <Link className="btn btn--quiet" href="/admin/import">Import from a spreadsheet</Link>
+          </div>
         </form>
       </div>
     </>

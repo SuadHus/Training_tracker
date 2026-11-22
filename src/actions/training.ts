@@ -10,7 +10,8 @@ import {
 import type { ExerciseHistory } from "../lib/workout-edit";
 import {
   completeWorkout, copyToTemplate, createWorkout, deleteExercise, deleteField, deleteWorkout, exerciseHistory,
-  loadWorkout, reopenWorkout, saveExercise, saveField, saveWorkout, setExerciseArchived, type SaveResult,
+  importTemplates, loadWorkout, reopenWorkout, saveExercise, saveField, saveWorkout, setExerciseArchived,
+  type ImportedTemplate, type SaveResult,
 } from "../lib/workout-store";
 
 type Failure = { ok: false; message: string };
@@ -143,6 +144,13 @@ export async function deleteFieldAction(id: string): Promise<{ ok: true } | Fail
     await deleteField(id);
     return { ok: true as const };
   });
+}
+
+export async function importSheetAction(
+  text: string, picks: Array<{ index: number; title: string }>,
+): Promise<{ ok: true; templates: ImportedTemplate[]; newExercises: string[] } | Failure> {
+  await requireOwner();
+  return attempt(async () => ({ ok: true as const, ...(await importTemplates(text, picks)) }));
 }
 
 // Forms: FormData in, redirect out.

@@ -6,6 +6,7 @@ import {
   type BlockDoc, type Equipment, type ExerciseInfo, type FieldInfo, type FieldKind, type Measures, type SetDoc,
   type Tracking, type WorkoutDoc, type WorkoutStatus,
 } from "./workout-doc";
+import { buildDraft, guessExercise, parseSheet, sheetKey, sheetLimits, type SheetEntry } from "./sheet-import";
 import type { ExerciseHistory } from "./workout-edit";
 
 type Run = (sql: string, params?: unknown[]) => Promise<{ rows: any[]; rowCount: number | null }>;
@@ -615,4 +616,59 @@ export async function saveField(
 
 export async function deleteField(id: string): Promise<void> {
   await query("DELETE FROM field_definitions WHERE id = $1", [isId(id) ? id : null]);
+}
+
+// Importing from a spreadsheet ------------------------------------------------
+
+export type ImportedTemplate = { id: string; title: string; exercises: number; sets: number };
+
+/**
+ * Create templates from rows pasted out of a spreadsheet. `picks` names the workouts
+ * to keep, by their place in parseSheet's result, and gives each a title. Exercises
+ * the library does not know are added with a first reading of what they are.
+ */
+export async function importTemplates(
+  text: unknown, picks: unknown,
+): Promise<{ templates: ImportedTemplate[]; newExercises: string[] }> {
+  if (typeof text !== "string" || !text.trim()) throw new WorkoutInputError("Paste the rows from your spreadsheet first.");
+  if (text.length > sheetLimits.characters) throw new WorkoutInputError("That is too much text for one import. Paste fewer weeks at a time.");
+  if (!Array.isArray(picks) || picks.length === 0) throw new WorkoutInputError("Choose at least one workout to import.");
+  const workouts = parseSheet(rejectNul(text, "The pasted text"));
+  const chosen = picks.map((pick: unknown) => {
+    const { index, title } = (typeof pick === "object" && pick !== null ? pick : {}) as { index?: unknown; title?: unknown };
+    if (typeof index !== "number" || !Number.isInteger(index) || !workouts[index]) {
+      throw new WorkoutInputError("The pasted text changed. Check the preview and try again.");
+    }
+    return { workout: workouts[index], title: bounded(title, "The template name", limits.title) };
+  });
+  if (new Set(chosen.map(({ workout }) => workout)).size !== chosen.length) {
+    throw new WorkoutInputError("The same workout was chosen twice. Reload the page and try again.");
+  }
+
+  const library = new Map((await listExercises({ includeArchived: true })).map((exercise) => [sheetKey(exercise.name), exercise]));
+  const newExercises: string[] = [];
+  const exerciseFor = async (entry: SheetEntry) => {
+    const key = sheetKey(entry.name);
+    let exercise = library.get(key);
+    if (!exercise) {
+      exercise = await saveExercise({ name: entry.name.slice(0, 100), ...guessExercise(entry) });
+      library.set(key, exercise);
+      newExercises.push(exercise.name);
+    }
+    return exercise;
+  };
+
+  const templates: ImportedTemplate[] = [];
+  for (const { workout, title } of chosen) {
+    for (const entry of workout.entries) await exerciseFor(entry);
+    const draft = buildDraft(workout, title, (entry) => library.get(sheetKey(entry.name))!);
+    const id = await createWorkout({ status: "template", title });
+    const saved = await saveWorkout(id, 0, draft);
+    if (!saved.ok) {
+      await deleteWorkout(id);
+      throw new WorkoutInputError(saved.reason === "invalid" ? `${title}: ${saved.message}` : `${title} could not be saved. Try again.`);
+    }
+    templates.push({ id, title, exercises: draft.blocks.length, sets: draft.blocks.reduce((count, block) => count + block.sets.length, 0) });
+  }
+  return { templates, newExercises };
 }
