@@ -52,7 +52,7 @@ export default async function ConnectionsPage({ searchParams }: { searchParams: 
           <form className={styles.actions}>
             <input type="hidden" name="provider" value={provider} />
             {configured && <button type="submit" formAction={connectSource}>{connected ? "Reconnect" : "Connect"} {provider === "withings" ? "Withings" : "Google Health"}</button>}
-            {configured && connected && !reauthorize && <button type="submit" formAction={syncSource}>Sync now</button>}
+            {configured && connected && !reauthorize && <button type="submit" formAction={syncSource}>{provider === "withings" ? "Force sync" : "Sync now"}</button>}
           </form>
           {connected && (
             <details className={styles.toggle}>

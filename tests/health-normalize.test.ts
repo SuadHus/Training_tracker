@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { googleObservations, withingsObservations } from "../src/lib/health-normalize";
+import { googleObservations, healthSyncRange, withingsObservations } from "../src/lib/health-normalize";
 
 test("pairs the primary sleep with its local wake date and uses the vendor daily heart rate", () => {
   const sleep = [
@@ -38,4 +38,11 @@ test("selects the earliest attributed Withings morning weigh-in across DST", () 
     { externalId: "2026-03-28", metric: "body_weight_kg", localDay: "2026-03-28", observedAt: "2026-03-28T03:00:00.000Z", value: 84.42 },
     { externalId: "2026-03-29", metric: "body_weight_kg", localDay: "2026-03-29", observedAt: "2026-03-29T02:01:00.000Z", value: 84.27 },
   ]);
+});
+
+test("force sync refreshes 30 local days even after a provider has synced", () => {
+  const now = new Date("2026-03-29T22:30:00Z");
+  assert.deepEqual(healthSyncRange(now, true, true), { from: "2026-03-01", end: "2026-03-31" });
+  assert.deepEqual(healthSyncRange(now, false, false), { from: "2026-03-01", end: "2026-03-31" });
+  assert.deepEqual(healthSyncRange(now, true, false), { from: "2026-03-17", end: "2026-03-31" });
 });

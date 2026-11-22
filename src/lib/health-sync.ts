@@ -1,6 +1,6 @@
 import { query, transaction } from "./db";
 import { hasHealthKey, openHealthValue, sealHealthValue } from "./health-crypto";
-import { healthDay, shiftHealthDay } from "./health-normalize";
+import { healthSyncRange } from "./health-normalize";
 import {
   healthProviders, providerObservations, providerOptions, HealthProviderError, type HealthCredentials, type HealthProvider,
 } from "./health-providers";
@@ -91,12 +91,11 @@ async function accessCredentials(provider: HealthProvider, rejectedToken?: strin
   });
 }
 
-export async function syncHealthProvider(provider: HealthProvider): Promise<HealthSyncResult> {
+export async function syncHealthProvider(provider: HealthProvider, { force = false } = {}): Promise<HealthSyncResult> {
   try {
     let active = await accessCredentials(provider);
     if (!active) return { provider, outcome: "inactive" };
-    const today = healthDay(new Date());
-    const range = { from: shiftHealthDay(today, active.credentials.lastSyncedAt ? -13 : -29), end: shiftHealthDay(today, 1) };
+    const range = healthSyncRange(new Date(), Boolean(active.credentials.lastSyncedAt), force);
     let observations;
     try {
       observations = await providerObservations(provider, active.credentials, range);

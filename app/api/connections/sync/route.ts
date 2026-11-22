@@ -1,5 +1,5 @@
 import { healthSecretMatches } from "@/src/lib/health-crypto";
-import { healthProviders, type HealthProvider } from "@/src/lib/health-providers";
+import { healthProviders, providerName, type HealthProvider } from "@/src/lib/health-providers";
 import { syncHealthProvider } from "@/src/lib/health-sync";
 
 export async function POST(request: Request) {
@@ -9,7 +9,10 @@ export async function POST(request: Request) {
     return new Response(null, { status: 401 });
   }
 
-  const providers = Object.keys(healthProviders) as HealthProvider[];
+  const selected = new URL(request.url).searchParams.get("provider");
+  const provider = selected === null ? null : providerName(selected);
+  if (selected !== null && !provider) return new Response(null, { status: 400 });
+  const providers = provider ? [provider] : Object.keys(healthProviders) as HealthProvider[];
   const results = await Promise.all(providers.map((provider) => syncHealthProvider(provider)));
   return Response.json({ results }, {
     status: results.some((result) => result.outcome === "failed") ? 502 : 200,

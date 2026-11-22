@@ -29,7 +29,7 @@ export async function connectSource(formData: FormData) {
 export async function syncSource(formData: FormData) {
   await requireOwner();
   const provider = submittedProvider(formData);
-  const result = await syncHealthProvider(provider);
+  const result = await syncHealthProvider(provider, { force: provider === "withings" });
   const params = new URLSearchParams({ result: result.outcome });
   if (result.count !== undefined) params.set("count", String(result.count));
   redirect(`/admin/connections?${params}`);

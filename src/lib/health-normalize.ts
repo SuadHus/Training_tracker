@@ -50,6 +50,14 @@ export function shiftHealthDay(day: string, days: number) {
   return date.toISOString().slice(0, 10);
 }
 
+export function healthSyncRange(now: Date, previouslySynced: boolean, force = false) {
+  const today = healthDay(now);
+  return {
+    from: shiftHealthDay(today, previouslySynced && !force ? -13 : -29),
+    end: shiftHealthDay(today, 1),
+  };
+}
+
 function civilDay(date?: CivilDate) {
   if (!date || !Number.isInteger(date.year) || !Number.isInteger(date.month) || !Number.isInteger(date.day)) return null;
   const day = [date.year, date.month, date.day].map((part, index) => String(part).padStart(index === 0 ? 4 : 2, "0")).join("-");

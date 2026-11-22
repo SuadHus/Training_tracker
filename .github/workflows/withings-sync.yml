@@ -1,0 +1,29 @@
+name: Withings morning sync
+
+on:
+  schedule:
+    - cron: "0 10 * * *"
+      timezone: Europe/Stockholm
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Refresh Withings readings
+        env:
+          HEALTH_SYNC_SECRET: ${{ secrets.HEALTH_SYNC_SECRET }}
+        run: |
+          set -euo pipefail
+          response=$(curl --fail --silent --show-error --max-time 90 \
+            --request POST --header "Authorization: Bearer $HEALTH_SYNC_SECRET" \
+            'https://training-tracker-421a9edd04a6.herokuapp.com/api/connections/sync?provider=withings')
+          if jq -e '.results | length == 1 and .[0].provider == "withings" and (.[0].outcome == "synced" or .[0].outcome == "busy")' <<<"$response" >/dev/null; then
+            echo "Withings sync completed or is already running."
+          else
+            echo "::error::Withings sync did not complete. Check the app’s Health connections page."
+            exit 1
+          fi
