@@ -62,7 +62,7 @@ Use the exact callback URL registered with each OAuth client. For production, us
 - **Withings** uses `WITHINGS_CLIENT_ID` and `WITHINGS_CLIENT_SECRET`, with the `user.metrics` permission. Register an HTTPS callback on the deployment origin. API access can depend on your account, region, and subscription. [Withings Public API setup](https://developer.withings.com/developer-guide/v3/integration-guide/public-health-data-api/developer-account/create-your-accesses-no-medical-cloud/)
 - Generate independent random secrets for `NEXTAUTH_SECRET`, `HEALTH_TOKEN_KEY`, and `HEALTH_SYNC_SECRET` using `openssl rand -base64 32`. Store them in your deployment's secret manager or the ignored `.env.local`.
 
-Open **Connections** on the desk to authorize each provider and run the first sync. A scheduler can POST to `/api/connections/sync` with `Authorization: Bearer $HEALTH_SYNC_SECRET`. The first sync covers 30 calendar days and later runs refresh 14 days to pick up late changes. Configure the scheduler on the chosen host to enable automatic updates.
+Open **Connections** on the desk to authorize each provider and run the first sync. Connected providers also refresh automatically in the background when you open the desk, a session, or **Publishing**, and when you finish a workout (with a 15-minute cooldown once today's readings are missing, and no extra calls once today's readings are in place). For rest days, a scheduler can also POST to `/api/connections/sync` with `Authorization: Bearer $HEALTH_SYNC_SECRET`. The first sync covers 30 calendar days and later runs refresh 14 days to pick up late changes.
 
 ## Day vitals and publication
 

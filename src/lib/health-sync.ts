@@ -1,8 +1,9 @@
 import { query, transaction } from "./db";
 import { hasHealthKey, openHealthValue, sealHealthValue } from "./health-crypto";
-import { healthSyncRange } from "./health-normalize";
+import { healthAutoSyncCooldownMs, healthDay, healthSyncRange, shouldAutoSync } from "./health-normalize";
 import {
-  healthProviders, providerObservations, providerOptions, HealthProviderError, type HealthCredentials, type HealthProvider,
+  expectedHealthMetrics, healthProviders, providerName, providerObservations, providerOptions, HealthProviderError,
+  type HealthCredentials, type HealthProvider,
 } from "./health-providers";
 
 type ConnectionRow = { provider: HealthProvider; credentials: string };
@@ -62,6 +63,7 @@ export async function connectHealthProvider(provider: HealthProvider, code: stri
       [provider, writeCredentials(provider, credentials)],
     );
   });
+  autoSyncState().lastAttemptAt.delete(provider);
 }
 
 export async function disconnectHealthProvider(provider: HealthProvider) {
@@ -70,6 +72,7 @@ export async function disconnectHealthProvider(provider: HealthProvider) {
     await client.query("DELETE FROM source_connections WHERE provider = $1", [provider]);
     await client.query("DELETE FROM health_observations WHERE provider = $1", [provider]);
   });
+  autoSyncState().lastAttemptAt.delete(provider);
 }
 
 async function accessCredentials(provider: HealthProvider, rejectedToken?: string) {
@@ -136,5 +139,76 @@ export async function syncHealthProvider(provider: HealthProvider, { force = fal
     return synced ? { provider, outcome: "synced", count: observations.length } : { provider, outcome: "busy" };
   } catch {
     return { provider, outcome: "failed" };
+  }
+}
+
+type AutoSyncState = {
+  inFlight: Map<HealthProvider, Promise<HealthSyncResult>>;
+  lastAttemptAt: Map<HealthProvider, number>;
+};
+
+const syncGlobal = globalThis as typeof globalThis & { healthAutoSync?: AutoSyncState };
+
+function autoSyncState(): AutoSyncState {
+  if (!syncGlobal.healthAutoSync) {
+    syncGlobal.healthAutoSync = { inFlight: new Map(), lastAttemptAt: new Map() };
+  }
+  return syncGlobal.healthAutoSync;
+}
+
+export async function syncStaleHealthProviders(now = new Date()): Promise<HealthSyncResult[]> {
+  if (!hasHealthKey()) return [];
+  try {
+    const state = autoSyncState();
+    const { rows } = await query<{ provider: string; credentials: string }>(
+      "SELECT provider, credentials FROM source_connections",
+    );
+    if (!rows.length) return [];
+
+    const tasks: Array<Promise<HealthSyncResult>> = [];
+    const candidates: Array<{ provider: HealthProvider; credentials: HealthCredentials }> = [];
+
+    for (const row of rows) {
+      const provider = providerName(row.provider);
+      if (!provider || !providerOptions(provider)) continue;
+      const running = state.inFlight.get(provider);
+      if (running) {
+        tasks.push(running);
+        continue;
+      }
+      const lastAttempt = state.lastAttemptAt.get(provider);
+      if (lastAttempt !== undefined && now.getTime() - lastAttempt < healthAutoSyncCooldownMs) continue;
+      try {
+        candidates.push({ provider, credentials: readCredentials(provider, row.credentials) });
+      } catch {
+        // Credentials sealed with an old key require manual reconnection.
+      }
+    }
+
+    if (candidates.length > 0) {
+      const today = healthDay(now);
+      const { rows: observed } = await query<{ provider: string; metric: string }>(
+        "SELECT provider, metric FROM health_observations WHERE local_day = $1",
+        [today],
+      );
+      const todayMetrics = new Set(observed.map((item) => `${item.provider}:${item.metric}`));
+
+      for (const { provider, credentials } of candidates) {
+        const expected = expectedHealthMetrics(provider, credentials.scopes);
+        const hasTodayData = expected.length > 0 && expected.every((metric) => todayMetrics.has(`${provider}:${metric}`));
+        if (!shouldAutoSync({ provider, lastSyncedAt: credentials.lastSyncedAt, hasTodayData, now })) continue;
+
+        state.lastAttemptAt.set(provider, now.getTime());
+        const task = syncHealthProvider(provider).finally(() => {
+          if (state.inFlight.get(provider) === task) state.inFlight.delete(provider);
+        });
+        state.inFlight.set(provider, task);
+        tasks.push(task);
+      }
+    }
+
+    return tasks.length ? await Promise.all(tasks) : [];
+  } catch {
+    return [];
   }
 }

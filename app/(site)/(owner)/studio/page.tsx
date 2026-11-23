@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { after } from "next/server";
+import { syncStaleHealthProviders } from "@/src/lib/health-sync";
 import { requireOwner } from "@/src/lib/owner";
 import { query } from "@/src/lib/db";
 import { formatNumber, isDay, stockholmDay } from "@/src/lib/workout-doc";
@@ -20,6 +22,7 @@ const errors: Record<string, string> = {
 
 export default async function Studio({ searchParams }: { searchParams: Promise<{ day?: string; saved?: string; error?: string }> }) {
   await requireOwner();
+  after(() => syncStaleHealthProviders());
   const params = await searchParams;
   const day = params.day && isDay(params.day) ? params.day : stockholmDay();
   const [posts, vitals, observations] = await Promise.all([

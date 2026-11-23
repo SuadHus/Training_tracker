@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { googleObservations, healthSyncRange, withingsObservations } from "../src/lib/health-normalize";
+import { googleObservations, healthSyncRange, shouldAutoSync, withingsObservations } from "../src/lib/health-normalize";
 
 test("pairs the primary sleep with its local wake date and uses the vendor daily heart rate", () => {
   const sleep = [
@@ -45,4 +45,61 @@ test("force sync refreshes 30 local days even after a provider has synced", () =
   assert.deepEqual(healthSyncRange(now, true, true), { from: "2026-03-01", end: "2026-03-31" });
   assert.deepEqual(healthSyncRange(now, false, false), { from: "2026-03-01", end: "2026-03-31" });
   assert.deepEqual(healthSyncRange(now, true, false), { from: "2026-03-17", end: "2026-03-31" });
+});
+
+test("auto-sync refreshes stale providers once per day and stops once today's window is complete", () => {
+  // Never synced or synced on an earlier Stockholm day.
+  assert.equal(shouldAutoSync({
+    provider: "google-health",
+    hasTodayData: false,
+    now: new Date("2026-11-23T17:00:00+01:00"),
+  }), true);
+  assert.equal(shouldAutoSync({
+    provider: "withings",
+    lastSyncedAt: "2026-11-22T20:22:18Z",
+    hasTodayData: false,
+    now: new Date("2026-11-23T17:00:00+01:00"),
+  }), true);
+
+  // Respects cooldown to avoid hammering upstream APIs.
+  assert.equal(shouldAutoSync({
+    provider: "google-health",
+    lastSyncedAt: "2026-11-23T16:50:00+01:00",
+    hasTodayData: false,
+    now: new Date("2026-11-23T17:00:00+01:00"),
+  }), false);
+
+  // Already synced today with today's readings in place: no extra sync.
+  assert.equal(shouldAutoSync({
+    provider: "google-health",
+    lastSyncedAt: "2026-11-23T10:17:00+01:00",
+    hasTodayData: true,
+    now: new Date("2026-11-23T17:00:00+01:00"),
+  }), false);
+  assert.equal(shouldAutoSync({
+    provider: "withings",
+    lastSyncedAt: "2026-11-23T08:30:00+01:00",
+    hasTodayData: true,
+    now: new Date("2026-11-23T17:00:00+01:00"),
+  }), false);
+
+  // Missing today's readings: Google Health retries after cooldown; Withings only retries if last sync was before 10:15 Stockholm.
+  assert.equal(shouldAutoSync({
+    provider: "google-health",
+    lastSyncedAt: "2026-11-23T10:17:00+01:00",
+    hasTodayData: false,
+    now: new Date("2026-11-23T17:00:00+01:00"),
+  }), true);
+  assert.equal(shouldAutoSync({
+    provider: "withings",
+    lastSyncedAt: "2026-11-23T09:50:00+01:00",
+    hasTodayData: false,
+    now: new Date("2026-11-23T17:00:00+01:00"),
+  }), true);
+  assert.equal(shouldAutoSync({
+    provider: "withings",
+    lastSyncedAt: "2026-11-23T10:15:00+01:00",
+    hasTodayData: false,
+    now: new Date("2026-11-23T17:00:00+01:00"),
+  }), false);
 });

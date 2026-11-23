@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { healthProviders, providerObservations } from "../src/lib/health-providers";
+import { expectedHealthMetrics, healthProviders, providerObservations } from "../src/lib/health-providers";
 
 test("fetches all reconcile pages for the granted Google scope", async () => {
   const requests: URL[] = [];
@@ -64,4 +64,15 @@ test("uses distinct OAuth permissions and signed state", () => {
   assert.equal(google.searchParams.get("access_type"), "offline");
   assert.equal(withings.searchParams.get("scope"), "user.metrics");
   assert.equal(withings.searchParams.get("state"), "state");
+});
+
+test("derives expected daily metrics from provider and granted scopes", () => {
+  assert.deepEqual(expectedHealthMetrics("withings", ["user.metrics"]), ["body_weight_kg"]);
+  assert.deepEqual(expectedHealthMetrics("google-health", [
+    "https://www.googleapis.com/auth/googlehealth.sleep.readonly",
+  ]), ["sleep_minutes"]);
+  assert.deepEqual(expectedHealthMetrics("google-health", [
+    "https://www.googleapis.com/auth/googlehealth.sleep.readonly",
+    "https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly",
+  ]), ["sleep_minutes", "resting_heart_rate"]);
 });

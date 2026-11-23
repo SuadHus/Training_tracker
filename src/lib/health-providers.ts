@@ -222,6 +222,14 @@ export function providerName(value: string): HealthProvider | null {
   return Object.hasOwn(healthProviders, value) ? (value as HealthProvider) : null;
 }
 
+export function expectedHealthMetrics(provider: HealthProvider, scopes: string[]): Array<HealthObservation["metric"]> {
+  if (provider === "withings") return ["body_weight_kg"];
+  const metrics: Array<HealthObservation["metric"]> = [];
+  if (scopes.includes(googleSleep)) metrics.push("sleep_minutes");
+  if (scopes.includes(googleVitals)) metrics.push("resting_heart_rate");
+  return metrics;
+}
+
 export function providerOptions(provider: HealthProvider): OAuthOptions | null {
   const { env } = healthProviders[provider];
   const clientId = process.env[`${env}_CLIENT_ID`];

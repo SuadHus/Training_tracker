@@ -1,9 +1,11 @@
 import { randomUUID } from "node:crypto";
 import Link from "next/link";
+import { after } from "next/server";
 import { deleteWorkoutAction, startWorkoutAction } from "@/src/actions/training";
 import { SubmitButton } from "@/app/ui/submit-button";
 import { clockTime, dayLabel, weekLabel, weekName, weekRange } from "@/src/lib/day-format";
 import { currentBlock } from "@/src/lib/block-store";
+import { syncStaleHealthProviders } from "@/src/lib/health-sync";
 import { requireOwner } from "@/src/lib/owner";
 import { addDays, weekStart } from "@/src/lib/workout-doc";
 import { deskData, type DeskWorkout } from "@/src/lib/workout-store";
@@ -28,6 +30,7 @@ function DeleteSession({ id, subject }: { id: string; subject: string }) {
 
 export default async function Desk({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   await requireOwner();
+  after(() => syncStaleHealthProviders());
   const { error } = await searchParams;
   const [desk, block] = await Promise.all([deskData(), currentBlock()]);
   const { today } = desk;

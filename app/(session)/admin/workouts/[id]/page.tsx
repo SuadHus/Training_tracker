@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { after } from "next/server";
+import { syncStaleHealthProviders } from "@/src/lib/health-sync";
 import { requireOwner } from "@/src/lib/owner";
 import { isId, stockholmDay } from "@/src/lib/workout-doc";
 import { exerciseHistory, listExercises, listFields, loadWorkout } from "@/src/lib/workout-store";
@@ -25,6 +27,7 @@ export default async function WorkoutPage({ params, searchParams }: Props) {
   if (!isId(id)) notFound();
   const workout = await loadWorkout(id);
   if (!workout) notFound();
+  after(() => syncStaleHealthProviders());
 
   const today = stockholmDay();
   const [exercises, fields, histories, query] = await Promise.all([

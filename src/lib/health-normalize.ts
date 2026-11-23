@@ -1,6 +1,8 @@
 export const healthTimeZone = "Europe/Stockholm";
 export const withingsMorningStartHour = 6;
 export const withingsMorningEndHour = 10;
+export const withingsAutoSyncSettleMinute = 15;
+export const healthAutoSyncCooldownMs = 15 * 60_000;
 
 export type HealthObservation = {
   externalId: string;
@@ -34,16 +36,46 @@ const partsFormatter = new Intl.DateTimeFormat("en-GB", {
   month: "2-digit",
   day: "2-digit",
   hour: "2-digit",
+  minute: "2-digit",
   hourCycle: "h23",
 });
 
 function localDateAndHour(date: Date) {
   const parts = Object.fromEntries(partsFormatter.formatToParts(date).map(({ type, value }) => [type, value]));
-  return { day: `${parts.year}-${parts.month}-${parts.day}`, hour: Number(parts.hour) };
+  return { day: `${parts.year}-${parts.month}-${parts.day}`, hour: Number(parts.hour), minute: Number(parts.minute) };
 }
 
 export function healthDay(date: Date) {
   return localDateAndHour(date).day;
+}
+
+export function shouldAutoSync({
+  provider,
+  lastSyncedAt,
+  hasTodayData,
+  now = new Date(),
+  cooldownMs = healthAutoSyncCooldownMs,
+}: {
+  provider: "google-health" | "withings";
+  lastSyncedAt?: string;
+  hasTodayData: boolean;
+  now?: Date;
+  cooldownMs?: number;
+}) {
+  if (!lastSyncedAt) return true;
+  const last = new Date(lastSyncedAt);
+  if (!Number.isFinite(last.getTime())) return true;
+  const elapsed = now.getTime() - last.getTime();
+  if (elapsed >= 0 && elapsed < cooldownMs) return false;
+  const nowLocal = localDateAndHour(now);
+  const lastLocal = localDateAndHour(last);
+  if (lastLocal.day !== nowLocal.day) return true;
+  if (hasTodayData) return false;
+  if (provider === "withings") {
+    return lastLocal.hour < withingsMorningEndHour
+      || (lastLocal.hour === withingsMorningEndHour && lastLocal.minute < withingsAutoSyncSettleMinute);
+  }
+  return true;
 }
 
 export function shiftHealthDay(day: string, days: number) {

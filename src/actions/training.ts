@@ -2,9 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import {
   addBlockSession, addBlockWeek, createBlock, deleteBlock, importBlock, removeBlockWeek, renameBlock,
 } from "../lib/block-store";
+import { syncStaleHealthProviders } from "../lib/health-sync";
 import { requireOwner } from "../lib/owner";
 import {
   WorkoutInputError, isDay, isId, stockholmDay,
@@ -78,11 +80,32 @@ export async function quickAddExerciseAction(
   return attempt(async () => ({ ok: true as const, exercise: await saveExercise({ name, tracking, equipment, primaryMuscle }) }));
 }
 
+async function waitBriefly(work: Promise<unknown>, ms: number) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      work,
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, ms);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 export async function completeWorkoutAction(id: string): Promise<{ ok: true } | Failure> {
   await requireOwner();
   if (!isId(id)) return unreadable;
   return attempt(async () => {
     await completeWorkout(id);
+    const sync = syncStaleHealthProviders();
+    try {
+      after(() => sync.then(() => undefined, () => undefined));
+    } catch {
+      // Allow calling outside a Next.js request context.
+    }
+    await waitBriefly(sync, 2500);
     return { ok: true as const };
   });
 }
