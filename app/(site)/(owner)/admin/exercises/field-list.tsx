@@ -23,15 +23,15 @@ export function FieldList({ fields, exercises }: { fields: FieldInfo[]; exercise
     <div>
       <p className="empty-line">An extra thing to record on a set, such as bar speed. Choose one exercise or all of them.</p>
       {fields.length > 0 && (
-        <table className={`table ${styles.stackTop}`}>
+        <table className={`table ${styles.stackTop} ${styles.fields}`}>
           <caption className="sr">Extra set fields</caption>
-          <thead><tr><th scope="col">Label</th><th scope="col">Unit</th><th scope="col">Type</th><th scope="col">Applies to</th><th scope="col"><span className="sr">Actions</span></th></tr></thead>
+          <thead><tr><th scope="col">Label</th><th scope="col" className={styles.fieldWide}>Unit</th><th scope="col" className={styles.fieldWide}>Type</th><th scope="col">Applies to</th><th scope="col"><span className="sr">Actions</span></th></tr></thead>
           <tbody>
             {fields.map((field) => (
               <tr key={field.id}>
-                <th scope="row">{field.label}</th>
-                <td>{field.unit || <span className="light">None</span>}</td>
-                <td>{kinds[field.kind]}</td>
+                <th scope="row">{field.label}<small className={styles.fieldPhone}>{[kinds[field.kind], field.unit].filter(Boolean).join(", ")}</small></th>
+                <td className={styles.fieldWide}>{field.unit || <span className="light">None</span>}</td>
+                <td className={styles.fieldWide}>{kinds[field.kind]}</td>
                 <td>{nameOf(field.exerciseId)}</td>
                 <td className="r">
                   <button type="button" className="btn btn--quiet" onClick={() => edit(field)}>Edit<span className="sr"> {field.label}</span></button>

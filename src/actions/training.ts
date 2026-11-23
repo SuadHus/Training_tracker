@@ -13,8 +13,8 @@ import {
 import type { ExerciseHistory } from "../lib/workout-edit";
 import {
   completeWorkout, copyToTemplate, createWorkout, deleteExercise, deleteField, deleteWorkout, exerciseHistory,
-  importTemplates, loadWorkout, reopenWorkout, saveExercise, saveField, saveWorkout, setExerciseArchived,
-  type ImportedTemplate, type SaveResult,
+  importTemplates, loadWorkout, reopenWorkout, saveExercise, saveField, setExerciseArchived,
+  type ImportedTemplate,
 } from "../lib/workout-store";
 
 type Failure = { ok: false; message: string };
@@ -58,15 +58,7 @@ async function form(back: string, work: () => Promise<string>): Promise<never> {
 
 // Called from the editor and the library; they return values and never redirect.
 
-export async function saveWorkoutAction(id: string, baseRevision: number, draft: unknown): Promise<SaveResult> {
-  await requireOwner();
-  if (!isId(id) || !Number.isInteger(baseRevision)) {
-    return { ok: false, reason: "invalid", message: unreadable.message };
-  }
-  // No revalidation here: this runs on every autosave, and revalidating would make
-  // the server re-render the open session screen each time. Every page reads fresh data anyway.
-  return saveWorkout(id, baseRevision, draft);
-}
+// Saving a workout does not go through an action: see app/api/workouts/[id]/save/route.ts.
 
 export async function historyAction(
   exerciseIds: string[], before: string | null, excludeWorkoutId: string,

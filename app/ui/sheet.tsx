@@ -7,6 +7,10 @@ import { Icon } from "./icons";
  * A modal sheet on the native dialog element: from the bottom on a phone,
  * centred on a desk. Escape and a tap outside close it; focus returns to
  * whatever opened it.
+ *
+ * Focus on opening: an element marked data-autofocus (the safe answer of a question)
+ * gets it. Otherwise, with a keyboard and a mouse, the first field does. On a touch
+ * screen it stays on Close, so the keyboard does not cover the sheet before it is read.
  */
 export function Sheet({ open, title, onClose, children, footer }: {
   open: boolean;
@@ -20,7 +24,13 @@ export function Sheet({ open, title, onClose, children, footer }: {
   useEffect(() => {
     const element = dialog.current;
     if (!element) return;
-    if (open && !element.open) element.showModal();
+    if (open && !element.open) {
+      element.showModal();
+      const marked = element.querySelector<HTMLElement>("[data-autofocus]");
+      const precise = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+      const field = precise ? element.querySelector<HTMLElement>(".sheet-body :is(input:not([type=hidden]), select, textarea):not(:disabled)") : null;
+      (marked ?? field)?.focus();
+    }
     if (!open && element.open) element.close();
   }, [open]);
 

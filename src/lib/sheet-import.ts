@@ -34,7 +34,7 @@ export type SheetWorkout = {
   section: number;
 };
 
-export const sheetLimits = { characters: 200_000, workouts: 30, weeks: 16, sessionsPerWeek: 7 } as const;
+export const sheetLimits = { characters: 200_000, rows: 4000, columns: 120, workouts: 30, weeks: 16, sessionsPerWeek: 7 } as const;
 
 const number = (text: string) => Number(text.replace(",", "."));
 const amount = "(\\d+(?:[.,]\\d+)?)";
@@ -43,17 +43,29 @@ function clean(cell: string): string {
   return cell.replace(/[   ]/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function table(text: string): string[][] {
+/**
+ * The text as rows of cells. A program is a few hundred rows and a few dozen columns;
+ * what lies beyond `sheetLimits.rows` and `sheetLimits.columns` is cut off, which keeps
+ * the reading quick whatever is pasted. `clipped` says that something was cut.
+ */
+function table(text: string): { rows: string[][]; clipped: boolean } {
   const lines = text.replace(/\r\n?/g, "\n").split("\n");
   const tabbed = lines.some((line) => line.includes("\t"));
+  let clipped = lines.length > sheetLimits.rows;
   // Without tabs the text was typed or came from a document: two or more spaces separate cells.
-  return lines.map((line) => (tabbed ? line.split("\t") : line.trim().split(/\s{2,}|\s*\|\s*/)).map(clean));
+  const rows = lines.slice(0, sheetLimits.rows).map((line) => {
+    const cells = tabbed ? line.split("\t") : line.trim().split(/\s{2,}|\s*\|\s*/);
+    if (cells.length > sheetLimits.columns && cells.slice(sheetLimits.columns).some((cell) => cell.trim())) clipped = true;
+    return cells.slice(0, sheetLimits.columns).map(clean);
+  });
+  return { rows, clipped };
 }
 
 /** Runs of neighbouring columns that hold anything: each run is one workout column. */
 function columnGroups(rows: string[][]): Array<[number, number]> {
-  const width = Math.max(0, ...rows.map((row) => row.length));
-  const used = Array.from({ length: width }, (_, column) => rows.some((row) => Boolean(row[column])));
+  const used: boolean[] = [];
+  for (const row of rows) row.forEach((cell, column) => { if (cell) used[column] = true; });
+  const width = used.length;
   const groups: Array<[number, number]> = [];
   for (let column = 0; column < width; column += 1) {
     if (!used[column]) continue;
@@ -175,9 +187,12 @@ export function parseSheet(text: string): SheetWorkout[] {
   return readSheet(text).workouts;
 }
 
-/** The workouts of a sheet, and how many it holds in all: only the first `sheetLimits.workouts` are read. */
-export function readSheet(text: string): { workouts: SheetWorkout[]; found: number } {
-  const rows = table(text.slice(0, sheetLimits.characters));
+/**
+ * The workouts of a sheet, and how many it holds in all: only the first `sheetLimits.workouts`
+ * are read. `clipped` is true when the text was longer or wider than is read at all.
+ */
+export function readSheet(text: string): { workouts: SheetWorkout[]; found: number; clipped: boolean } {
+  const { rows, clipped } = table(text.slice(0, sheetLimits.characters));
   const workouts: Array<Omit<SheetWorkout, "section"> & { top: number; left: number }> = [];
   for (const [start, end] of columnGroups(rows)) {
     let block: string[][] = [];
@@ -218,6 +233,7 @@ export function readSheet(text: string): { workouts: SheetWorkout[]; found: numb
   return {
     workouts: placed.slice(0, sheetLimits.workouts).map(({ workout: { day, label, entries }, section: at }) => ({ day, label, entries, section: at })),
     found: placed.length,
+    clipped: clipped || text.length > sheetLimits.characters,
   };
 }
 

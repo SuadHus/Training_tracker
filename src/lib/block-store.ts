@@ -134,9 +134,29 @@ function named(value: unknown): string {
   return title;
 }
 
+const EARLIEST_START = "2000-01-01";
+const LATEST_START = "2100-12-31";
+
 function firstDay(value: unknown): string {
   if (!isDay(value)) throw new WorkoutInputError("Enter a valid start date.");
+  if (value < EARLIEST_START || value > LATEST_START) throw new WorkoutInputError("Choose a start date between 2000 and 2100.");
   return value;
+}
+
+/** A day so many days on, or a refusal when that falls off the calendar the database keeps. */
+function dayAfter(day: string, days: number): string {
+  const next = addDays(day, days);
+  if (!isDay(next)) throw new WorkoutInputError("That date is too far away.");
+  return next;
+}
+
+/**
+ * Take the sessions of a block for this transaction. A save locks its session's row
+ * first, so after this a set being logged right now is either already stored or waits:
+ * what is then read as never trained cannot gain a logged set before it is deleted.
+ */
+async function holdSessions(client: PoolClient, blockId: string): Promise<void> {
+  await client.query("SELECT id FROM workouts WHERE block_id = $1 ORDER BY id FOR UPDATE", [blockId]);
 }
 
 function step(value: unknown): number {
@@ -236,7 +256,7 @@ export async function addBlockWeek(id: string, addKg: unknown): Promise<void> {
     );
     if (!last.length) throw new WorkoutInputError("The last week has no sessions to repeat. Add a session to it first.");
     for (const session of last) {
-      await copyPlan(client, session.id, { day: addDays(session.day, 7), blockId: id, week: block.weeks + 1, addKg: more });
+      await copyPlan(client, session.id, { day: dayAfter(session.day, 7), blockId: id, week: block.weeks + 1, addKg: more });
     }
     await client.query("UPDATE training_blocks SET weeks = weeks + 1 WHERE id = $1", [id]);
   });
@@ -286,6 +306,7 @@ export async function removeBlockWeek(id: string): Promise<void> {
     );
     if (!block) throw new WorkoutInputError("That block no longer exists.");
     if (block.weeks <= 1) throw new WorkoutInputError("A block has at least one week. Delete the block instead.");
+    await holdSessions(client, id);
     const { rows: [kept] } = await client.query(
       `SELECT 1 FROM workouts w WHERE w.block_id = $1 AND w.block_week >= $2 AND (w.status = 'completed'
           OR EXISTS (SELECT 1 FROM workout_sets s WHERE s.workout_id = w.id AND s.logged_at IS NOT NULL)) LIMIT 1`, [id, block.weeks],
@@ -307,6 +328,8 @@ export async function renameBlock(id: string, title: unknown, notes: unknown): P
 export async function deleteBlock(id: string): Promise<void> {
   if (!isId(id)) return;
   await transaction(async (client) => {
+    await client.query("SELECT 1 FROM training_blocks WHERE id = $1 FOR UPDATE", [id]);
+    await holdSessions(client, id);
     await client.query(
       `DELETE FROM workouts w WHERE w.block_id = $1 AND w.status = 'planned'
         AND NOT EXISTS (SELECT 1 FROM workout_sets s WHERE s.workout_id = w.id AND s.logged_at IS NOT NULL)`, [id],

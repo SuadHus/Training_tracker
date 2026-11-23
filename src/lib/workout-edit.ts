@@ -1,6 +1,6 @@
 // The editor's state transitions. Every function is pure: no clock, no randomness, no IO.
 import {
-  DEFAULT_REST_SECONDS, emptySet, hasResult, isLogged, noMeasures,
+  DEFAULT_REST_SECONDS, emptySet, hasResult, isLogged, limits, noMeasures,
   type BlockDoc, type ExerciseInfo, type Measures, type SetDoc, type SetTarget, type WorkoutDoc, type WorkoutDraft,
 } from "./workout-doc";
 
@@ -15,7 +15,8 @@ export type EditAction =
   | { type: "addBlock"; block: BlockDoc; at?: number }
   | { type: "removeBlock"; blockId: string }
   | { type: "moveBlock"; blockId: string; to: number }
-  | { type: "replaceExercise"; blockId: string; exerciseId: string }
+  /** `clear` when the new exercise records something else (time instead of weight and reps): the old numbers cannot carry over. */
+  | { type: "replaceExercise"; blockId: string; exerciseId: string; clear?: boolean }
   | { type: "setBlockNotes"; blockId: string; notes: string }
   | { type: "setBlockRest"; blockId: string; restSeconds: number | null }
   | { type: "addSet"; blockId: string; setId: string; warmup?: boolean }
@@ -78,6 +79,8 @@ export function editWorkout(doc: WorkoutDoc, action: EditAction): WorkoutDoc {
     case "setNotes":
       return action.notes === doc.notes ? doc : { ...doc, notes: action.notes };
     case "addBlock": {
+      // The server takes no more than this; one more would make every later save fail.
+      if (doc.blocks.length >= limits.blocks) return doc;
       if (doc.blocks.some((block) => block.id === action.block.id)) return doc;
       const at = Math.min(Math.max(action.at ?? doc.blocks.length, 0), doc.blocks.length);
       return withBlocks(doc, [...doc.blocks.slice(0, at), action.block, ...doc.blocks.slice(at)]);
@@ -98,7 +101,10 @@ export function editWorkout(doc: WorkoutDoc, action: EditAction): WorkoutDoc {
       return updateBlock(doc, action.blockId, (block) => block.exerciseId === action.exerciseId ? block : {
         ...block,
         exerciseId: action.exerciseId,
-        sets: block.sets.map((set) => (Object.keys(set.custom).length ? settled({ ...set, custom: {} }) : set)),
+        sets: block.sets.map((set) => {
+          if (action.clear) return emptySet({ id: set.id, warmup: set.warmup });
+          return Object.keys(set.custom).length ? settled({ ...set, custom: {} }) : set;
+        }),
       });
     case "setBlockNotes":
       return updateBlock(doc, action.blockId, (block) => block.notes === action.notes ? block : { ...block, notes: action.notes });
@@ -107,6 +113,7 @@ export function editWorkout(doc: WorkoutDoc, action: EditAction): WorkoutDoc {
         block.restSeconds === action.restSeconds ? block : { ...block, restSeconds: action.restSeconds });
     case "addSet":
       return updateBlock(doc, action.blockId, (block) => {
+        if (block.sets.length >= limits.setsPerBlock) return block;
         if (block.sets.some((set) => set.id === action.setId)) return block;
         const warmup = action.warmup === true;
         const sameKind = block.sets.filter((set) => set.warmup === warmup);
@@ -210,6 +217,11 @@ export function placeholderFor(block: BlockDoc, index: number, history: Exercise
 
 export function draftOf(doc: WorkoutDoc): WorkoutDraft {
   return { title: doc.title, day: doc.day, notes: doc.notes, blocks: doc.blocks };
+}
+
+/** Deep equality of plain values, whatever the order of an object's keys. */
+export function sameValue(a: unknown, b: unknown): boolean {
+  return equal(a, b);
 }
 
 function equal(a: unknown, b: unknown): boolean {

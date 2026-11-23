@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 import { quickAddExerciseAction } from "@/src/actions/training";
 import { Icon } from "@/app/ui/icons";
 import { Sheet } from "@/app/ui/sheet";
@@ -38,11 +38,8 @@ function PickerBody({ exercises, histories, onChoose, onCreated }: {
   const [creating, setCreating] = useState(false);
   const [adding, setAdding] = useState<string | null>(null);
 
-  useEffect(() => {
-    // The dialog is not open yet while this first runs, and a closed dialog cannot take focus.
-    const timer = setTimeout(() => search.current?.focus(), 60);
-    return () => clearTimeout(timer);
-  }, []);
+  // Where focus goes on opening is the sheet's business: the search field with a keyboard and a mouse,
+  // and not on a touch screen, where the keyboard would cover the list that is one tap away.
 
   const typed = query.trim();
   const matches = useMemo(() => {

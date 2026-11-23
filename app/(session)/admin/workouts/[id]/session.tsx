@@ -5,10 +5,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { historyAction, reopenWorkoutAction } from "@/src/actions/training";
 import { dayLabel } from "@/src/lib/day-format";
 import {
-  isLogged, loggedCount, newId, nextSet, type ExerciseInfo, type FieldInfo, type WorkoutDoc,
+  isLogged, limits, loggedCount, newId, nextSet, trackingLabels, type BlockDoc, type ExerciseInfo, type FieldInfo, type WorkoutDoc,
 } from "@/src/lib/workout-doc";
 import { starterSets, type ExerciseHistory } from "@/src/lib/workout-edit";
-import { ExerciseBlock } from "./block";
+import { ExerciseBlock, addSetId, focusSoon } from "./block";
 import type { MenuItem } from "./menu";
 import { ExercisePicker } from "./picker";
 import { RestTimer, restKey, type Rest } from "./rest-timer";
@@ -42,7 +42,9 @@ export function WorkoutSession({ initial, exercises: initialExercises, fields, h
 
   const template = doc.status === "template";
   const mode = template ? "plan" : doc.status === "completed" ? "log" : (doc.day ?? today) <= today ? "log" : "plan";
-  const live = doc.status === "planned" && mode === "log";
+  // Deleted on another device: what is on the screen can be read but no longer saved, so nothing on it is offered.
+  const gone = status.kind === "missing";
+  const live = doc.status === "planned" && mode === "log" && !gone;
   const exerciseById = new Map(exercises.map((exercise) => [exercise.id, exercise]));
   const logged = loggedCount(doc);
   const next = live ? nextSet(doc) : null;
@@ -59,21 +61,22 @@ export function WorkoutSession({ initial, exercises: initialExercises, fields, h
 
   useEffect(() => {
     if (!live) return;
+    // Kept for the device, not for the tab: a phone that reopens the app between sets still has its countdown.
     try {
-      const saved = sessionStorage.getItem(restKey(doc.id));
+      const saved = localStorage.getItem(restKey(doc.id));
       if (!saved) return;
       const parsed = JSON.parse(saved) as Partial<Rest>;
       if (typeof parsed.endsAt === "number" && typeof parsed.total === "number" && parsed.endsAt + 4000 > Date.now()) {
         setRest({ endsAt: parsed.endsAt, total: parsed.total });
-      } else sessionStorage.removeItem(restKey(doc.id));
+      } else localStorage.removeItem(restKey(doc.id));
     } catch {}
   }, [doc.id, live]);
 
   const changeRest = useCallback((value: Rest | null) => {
     setRest(value);
     try {
-      if (value) sessionStorage.setItem(restKey(doc.id), JSON.stringify(value));
-      else sessionStorage.removeItem(restKey(doc.id));
+      if (value) localStorage.setItem(restKey(doc.id), JSON.stringify(value));
+      else localStorage.removeItem(restKey(doc.id));
     } catch {}
   }, [doc.id]);
 
@@ -135,7 +138,11 @@ export function WorkoutSession({ initial, exercises: initialExercises, fields, h
     const replace = sheet?.kind === "picker" ? sheet.replace : null;
     const history = await historyFor(exercise.id);
     if (replace) {
-      dispatch({ type: "replaceExercise", blockId: replace, exerciseId: exercise.id });
+      const block = doc.blocks.find((item) => item.id === replace);
+      const same = exerciseById.get(block?.exerciseId ?? "")?.tracking === exercise.tracking;
+      // Numbers only carry over to an exercise that records the same things. Logged ones are not cleared without asking.
+      if (!same && block?.sets.some(isLogged)) return setSheet({ kind: "replaceBlock", blockId: replace, exerciseId: exercise.id });
+      dispatch({ type: "replaceExercise", blockId: replace, exerciseId: exercise.id, clear: !same });
     } else {
       const block = { id: newId(), exerciseId: exercise.id, notes: "", restSeconds: null, sets: starterSets(exercise, history, template) };
       dispatch({ type: "addBlock", block });
@@ -154,6 +161,14 @@ export function WorkoutSession({ initial, exercises: initialExercises, fields, h
       setNotice("Could not reach the server. Check the connection and try again.");
     }
   };
+
+  const removeBlock = useCallback((removed: BlockDoc) => {
+    if (removed.sets.some(isLogged)) setSheet({ kind: "removeBlock", blockId: removed.id });
+    else {
+      dispatch({ type: "removeBlock", blockId: removed.id });
+      focusSoon("add-exercise");
+    }
+  }, [dispatch]);
 
   const session = !template;
   const menu: MenuItem[] = [
@@ -181,6 +196,7 @@ export function WorkoutSession({ initial, exercises: initialExercises, fields, h
         doc={doc}
         mode={mode}
         logged={logged}
+        gone={gone}
         items={menu}
         onDetails={() => setSheet({ kind: "details" })}
         onFinish={() => setSheet({ kind: "finish" })}
@@ -190,7 +206,7 @@ export function WorkoutSession({ initial, exercises: initialExercises, fields, h
       />
       <StatusLine status={status} onRetry={retryNow} since={live && logged > 0 ? since : null} />
 
-      <div className={styles.content}>
+      <div className={styles.content} inert={gone}>
         {notice && <p className="notice notice--alert" role="alert">{notice}</p>}
         {doc.status === "planned" && doc.day !== null && doc.day < today && logged === 0 && (
           <p className={styles.late}>
@@ -222,15 +238,16 @@ export function WorkoutSession({ initial, exercises: initialExercises, fields, h
                 open={setSheet}
                 newId={newId}
                 onLogged={startRest}
-                onRemoveBlock={(removed) => (removed.sets.some(isLogged)
-                  ? setSheet({ kind: "removeBlock", blockId: removed.id })
-                  : dispatch({ type: "removeBlock", blockId: removed.id }))}
+                onRemoveBlock={removeBlock}
               />
             ))}
           </ol>
         )}
 
-        <button type="button" className={`btn btn--plain btn--wide ${styles.addExercise}`} onClick={() => setSheet({ kind: "picker", replace: null })}>
+        <button
+          type="button" id="add-exercise" className={`btn btn--plain btn--wide ${styles.addExercise}`}
+          disabled={doc.blocks.length >= limits.blocks} onClick={() => setSheet({ kind: "picker", replace: null })}
+        >
           Add exercise
         </button>
       </div>
@@ -249,16 +266,37 @@ export function WorkoutSession({ initial, exercises: initialExercises, fields, h
       <ConfirmSheet
         open={kind === "removeSet"} onClose={() => close("removeSet")} title="Remove set"
         confirm="Remove set" keep="Keep set"
-        onConfirm={() => { if (target && targetSet) dispatch({ type: "removeSet", blockId: target.id, setId: targetSet.id }); }}
+        onConfirm={() => {
+          if (!target || !targetSet) return;
+          dispatch({ type: "removeSet", blockId: target.id, setId: targetSet.id });
+          focusSoon(addSetId(target.id));
+        }}
       >
         This set is marked done. Removing it deletes what you logged.
       </ConfirmSheet>
       <ConfirmSheet
         open={kind === "removeBlock"} onClose={() => close("removeBlock")} title="Remove exercise"
         confirm="Remove exercise" keep="Keep exercise"
-        onConfirm={() => { if (target) dispatch({ type: "removeBlock", blockId: target.id }); }}
+        onConfirm={() => {
+          if (!target) return;
+          dispatch({ type: "removeBlock", blockId: target.id });
+          focusSoon("add-exercise");
+        }}
       >
         {target ? `${targetName} has ${target.sets.filter(isLogged).length} logged ${target.sets.filter(isLogged).length === 1 ? "set" : "sets"}. Removing it deletes them.` : ""}
+      </ConfirmSheet>
+      <ConfirmSheet
+        open={kind === "replaceBlock"} onClose={() => close("replaceBlock")} title="Replace exercise"
+        confirm="Replace and clear" keep="Keep exercise"
+        onConfirm={() => {
+          if (sheet?.kind === "replaceBlock") dispatch({ type: "replaceExercise", blockId: sheet.blockId, exerciseId: sheet.exerciseId, clear: true });
+        }}
+      >
+        {target && sheet?.kind === "replaceBlock" ? (() => {
+          const incoming = exerciseById.get(sheet.exerciseId);
+          const count = target.sets.filter(isLogged).length;
+          return `${incoming?.name ?? "The new exercise"} records ${trackingLabels[incoming?.tracking ?? "weight_reps"].toLowerCase()}, which ${targetName} does not. Replacing clears the numbers of ${targetName}, with its ${count} logged ${count === 1 ? "set" : "sets"}.`;
+        })() : ""}
       </ConfirmSheet>
       <ExercisePicker
         open={kind === "picker"}

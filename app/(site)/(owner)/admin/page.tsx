@@ -66,7 +66,7 @@ export default async function Desk({ searchParams }: { searchParams: Promise<{ e
                   <span className={styles.title}>{workout.title}</span>
                   <span className={styles.names}>{workout.loggedCount} of {workout.setCount} sets logged</span>
                 </div>
-                <div className={styles.actions}><Link className="btn" href={`/admin/workouts/${workout.id}`}>Resume</Link></div>
+                <div className={styles.actions}><Link className="btn" href={`/admin/workouts/${workout.id}`}>Resume<span className="sr"> {workout.title}, {dayLabel(workout.day)}</span></Link></div>
               </li>
             ))}
           </ul>
@@ -111,7 +111,7 @@ export default async function Desk({ searchParams }: { searchParams: Promise<{ e
                     <span className={`${styles.names} light`}>{template.lastUsed ? `Last used ${dayLabel(template.lastUsed)}` : "Not used yet"}</span>
                   </div>
                   <div className={styles.actions}>
-                    <StartTemplate templateId={template.id} />
+                    <StartTemplate templateId={template.id} subject={template.title} />
                     <Link className="btn btn--quiet" href={`/admin/workouts/${template.id}`}>Edit<span className="sr"> {template.title}</span></Link>
                   </div>
                 </li>

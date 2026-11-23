@@ -141,6 +141,23 @@ test("what a sheet holds beyond the limits is counted, never dropped in silence"
   assert.deepEqual(week.sessions.map(({ index, day }) => [index, day.slice(8)]), [[0, "23"], [1, "24"], [2, "25"], [3, "26"], [4, "27"], [5, "28"], [6, "29"]]);
 });
 
+test("a paste far wider and longer than any program is cut off, quickly, and says so", () => {
+  // One row of 20 000 cells over 90 000 short rows took 40 seconds before the cut.
+  const hostile = `${"\t".repeat(20000)}x\n${"x\n".repeat(90000)}`;
+  const started = performance.now();
+  const read = readSheet(hostile);
+  assert.ok(performance.now() - started < 2000, "reading a hostile paste stays quick");
+  assert.equal(read.clipped, true);
+  assert.ok(read.workouts.length <= sheetLimits.workouts);
+  // Used and unused columns in turn: many column groups, still quick.
+  const striped = `${"a\t\t".repeat(5000)}\n${"b\t\t".repeat(5000)}\n`.repeat(200);
+  const again = performance.now();
+  assert.equal(readSheet(striped).clipped, true);
+  assert.ok(performance.now() - again < 2000);
+  assert.equal(readSheet(sheet).clipped, false);
+  assert.equal(readSheet("x".repeat(sheetLimits.characters + 1)).clipped, true);
+});
+
 test("the first day suggested for a block falls on the weekday the sheet's weeks start on", () => {
   const workouts = parseSheet(sheet);
   // The sheet's dated week starts on Sunday 25 October.

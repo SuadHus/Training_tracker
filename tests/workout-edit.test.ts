@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  emptySet, noMeasures, type BlockDoc, type ExerciseInfo, type Measures, type SetDoc, type SetTarget, type WorkoutDoc,
+  emptySet, limits, noMeasures, type BlockDoc, type ExerciseInfo, type Measures, type SetDoc, type SetTarget, type WorkoutDoc,
 } from "../src/lib/workout-doc";
 import {
   draftOf, editWorkout, placeholderFor, previousFor, restFor, sameDraft, starterSets, type ExerciseHistory,
@@ -76,6 +76,24 @@ test("replacing the exercise unlogs a set whose only result was a custom value",
   assert.equal(next.blocks[0].sets[0].loggedAt, null);
   assert.deepEqual(next.blocks[0].sets[0].custom, {});
   assert.equal(next.blocks[0].sets[1].loggedAt, "2026-11-22T09:05:00.000Z");
+});
+
+test("replacing with an exercise that records something else clears the numbers and the ticks", () => {
+  const done = set("a1", { target: { ...m({ reps: 5, load: 140 }), repsMax: null }, actual: m({ reps: 5, load: 140 }), loggedAt: "2026-11-22T09:00:00.000Z" });
+  const warm = set("a2", { warmup: true, actual: m({ reps: 3 }) });
+  const next = editWorkout(workout([block("a", [done, warm])]), { type: "replaceExercise", blockId: "a", exerciseId: "ex9", clear: true });
+  assert.equal(next.blocks[0].exerciseId, "ex9");
+  assert.deepEqual(next.blocks[0].sets.map((s) => [s.id, s.warmup, s.loggedAt, s.actual.reps, s.actual.load, s.target.reps, s.target.load]), [
+    ["a1", false, null, null, null, null, null], ["a2", true, null, null, null, null, null],
+  ]);
+});
+
+test("an exercise takes no more sets, and a workout no more exercises, than the server accepts", () => {
+  const full = workout([block("a", Array.from({ length: limits.setsPerBlock }, (_, at) => set(`s${at}`)))]);
+  assert.equal(editWorkout(full, { type: "addSet", blockId: "a", setId: "more" }), full);
+  assert.equal(editWorkout(full, { type: "addSet", blockId: "a", setId: "warm", warmup: true }), full);
+  const crowded = workout(Array.from({ length: limits.blocks }, (_, at) => block(`b${at}`, [])));
+  assert.equal(editWorkout(crowded, { type: "addBlock", block: block("one-more", []) }), crowded);
 });
 
 test("block notes and rest are edited", () => {

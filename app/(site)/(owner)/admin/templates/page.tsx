@@ -36,7 +36,7 @@ export default async function Templates({ searchParams }: { searchParams: Promis
               <span className={`${styles.names} light`}>{template.setCount} {template.setCount === 1 ? "set" : "sets"}</span>
             </div>
             <div className={styles.actions}>
-              <StartTemplate templateId={template.id} />
+              <StartTemplate templateId={template.id} subject={template.title} />
               <Link className="btn btn--quiet" href={`/admin/workouts/${template.id}`}>Edit<span className="sr"> {template.title}</span></Link>
             </div>
           </div>

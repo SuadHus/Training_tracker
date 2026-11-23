@@ -10,8 +10,9 @@ export type MenuItem =
   | { label: string; icon?: IconName; onSelect?: () => void; href?: string; danger?: boolean; disabled?: boolean };
 
 /**
- * A small menu on a button. A tap outside or Escape closes it and focus goes back to
- * the button; the arrow keys move between items.
+ * A small menu on a button. Escape closes it and focus goes back to the button; a tap
+ * outside or focus moving on (Tab) closes it too. The arrow keys, Home and End move
+ * between items.
  */
 export function Menu({ label, items, align = "end", children }: {
   label: string;
@@ -21,6 +22,7 @@ export function Menu({ label, items, align = "end", children }: {
 }) {
   const [open, setOpen] = useState(false);
   const [up, setUp] = useState(false);
+  const [room, setRoom] = useState<number | null>(null);
   const wrap = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
@@ -28,10 +30,15 @@ export function Menu({ label, items, align = "end", children }: {
 
   useLayoutEffect(() => {
     if (!open || !panel.current || !trigger.current) return;
+    // The sticky bar at the top of the screen takes the room above; the menu opens on the side
+    // with more room and scrolls inside itself when even that side is too short for it.
+    const bar = document.querySelector("header")?.getBoundingClientRect().bottom ?? 0;
     const below = window.innerHeight - trigger.current.getBoundingClientRect().bottom;
-    const above = trigger.current.getBoundingClientRect().top;
-    const height = panel.current.offsetHeight;
-    setUp(below < height + 12 && above > below);
+    const above = trigger.current.getBoundingClientRect().top - Math.max(0, bar);
+    const height = panel.current.scrollHeight;
+    const opensUp = below < height + 12 && above > below;
+    setUp(opensUp);
+    setRoom(Math.max(96, (opensUp ? above : below) - 12));
   }, [open]);
 
   useEffect(() => {
@@ -47,26 +54,34 @@ export function Menu({ label, items, align = "end", children }: {
   const close = (returnFocus: boolean) => {
     setOpen(false);
     setUp(false);
+    setRoom(null);
     if (returnFocus) trigger.current?.focus();
   };
 
   const onKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === "Escape") {
+    if (event.key === "Escape" && open) {
       event.stopPropagation();
       close(true);
       return;
     }
-    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    if (!open || !["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
     const found = [...(panel.current?.querySelectorAll<HTMLElement>("[role=menuitem]:not(:disabled)") ?? [])];
     if (!found.length) return;
     event.preventDefault();
     const at = found.indexOf(document.activeElement as HTMLElement);
-    const step = event.key === "ArrowDown" ? 1 : -1;
-    found[(at + step + found.length) % found.length].focus();
+    if (event.key === "Home") found[0].focus();
+    else if (event.key === "End") found[found.length - 1].focus();
+    else found[(at + (event.key === "ArrowDown" ? 1 : -1) + found.length) % found.length].focus();
+  };
+
+  // Focus that moves on to something outside takes the menu with it, so it is never left open behind the reader.
+  const onBlur = (event: React.FocusEvent) => {
+    const next = event.relatedTarget as Node | null;
+    if (open && next && !wrap.current?.contains(next)) close(false);
   };
 
   return (
-    <div className={styles.menuWrap} ref={wrap} onKeyDown={onKeyDown}>
+    <div className={styles.menuWrap} ref={wrap} onKeyDown={onKeyDown} onBlur={onBlur}>
       <button
         type="button"
         ref={trigger}
@@ -86,6 +101,7 @@ export function Menu({ label, items, align = "end", children }: {
           role="menu"
           aria-label={label}
           className={["menu", styles.menuPanel, align === "end" ? styles.menuEnd : styles.menuStart, up ? styles.menuUp : ""].join(" ")}
+          style={room === null ? undefined : { maxHeight: room }}
         >
           {items.map((item, index) => {
             if (item === "separator") return <hr key={`s${index}`} />;

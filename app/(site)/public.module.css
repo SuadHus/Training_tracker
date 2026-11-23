@@ -61,6 +61,10 @@ th .tableWeek { font-size: var(--text-l); }
   .barCol { display: table-cell; width: 10rem; }
   .barInSet { display: none; }
 }
+/* On the narrowest phones the week table keeps the days trained and the kilograms; the count of sessions is on All weeks. */
+@media (max-width: 22.49em) {
+  .roomy { display: none; }
+}
 .footnote { margin-top: 0.6rem; font-size: var(--text-s); color: var(--ink-soft); }
 .after { margin-top: 0.25rem; }
 

@@ -54,7 +54,7 @@ export default async function Home() {
               <tr>
                 <th scope="col">Week</th>
                 <th scope="col"><span className="sr">Days trained</span><WeekDotsHead /></th>
-                <th scope="col" className="r">Sessions</th>
+                <th scope="col" className={`r ${styles.roomy}`}>Sessions</th>
                 <th scope="col" className="r">kg</th>
               </tr>
             </thead>
@@ -68,7 +68,7 @@ export default async function Home() {
                     <small>{weekRange(week.start)}</small>
                   </th>
                   <td><WeekDots start={week.start} trained={trainedDays(week)} /></td>
-                  <td className="r strong num">{week.sessions.length}</td>
+                  <td className={`r strong num ${styles.roomy}`}>{week.sessions.length}</td>
                   <td className="r strong num nowrap">{formatTotal(week.volume)}</td>
                 </tr>
               ))}

@@ -120,6 +120,8 @@ test("a block refuses what it cannot build, and leaves nothing behind", { skip }
   for (const bad of [
     { ...good, title: " " }, { ...good, title: 7 }, { ...good, title: "x".repeat(121) },
     { ...good, startDay: "2026-02-30" }, { ...good, startDay: "tomorrow" },
+    // A block lives between 2000 and 2100, so none of its weeks can fall off the calendar.
+    { ...good, startDay: "9999-12-31" }, { ...good, startDay: "1999-12-31" },
     { ...good, weeks: 0 }, { ...good, weeks: 17 }, { ...good, weeks: 2.5 },
     { ...good, addKg: "-1" }, { ...good, addKg: "51" }, { ...good, addKg: "lots" },
     { ...good, layout: [] }, { ...good, layout: [{ offset: 7, templateId: legs }] },

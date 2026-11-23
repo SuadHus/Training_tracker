@@ -30,7 +30,8 @@ export type SheetState =
   | { kind: "target"; blockId: string; setId: string }
   | { kind: "extra"; blockId: string; setId: string }
   | { kind: "removeSet"; blockId: string; setId: string }
-  | { kind: "removeBlock"; blockId: string };
+  | { kind: "removeBlock"; blockId: string }
+  | { kind: "replaceBlock"; blockId: string; exerciseId: string };
 
 type Pair = { open: boolean; onClose: () => void };
 type Dispatch = (action: EditAction) => void;
@@ -74,7 +75,7 @@ export function ConfirmSheet({ open, onClose, title, children, confirm, keep, on
         <p>{children}</p>
         <Actions>
           <button type="button" className="btn btn--danger" onClick={() => { onConfirm(); onClose(); }}>{confirm}</button>
-          <button type="button" className="btn btn--quiet" onClick={onClose}>{keep}</button>
+          <button type="button" className="btn btn--quiet" data-autofocus onClick={onClose}>{keep}</button>
         </Actions>
       </div>
     </Sheet>
@@ -151,7 +152,7 @@ function NotesForm({ block, dispatch, onClose }: { block: BlockDoc; dispatch: Di
       onClose();
     }}>
       <div>
-        <label className="label" htmlFor="n-notes">Notes for this exercise</label>
+        <label className="label" htmlFor="n-notes">Notes for this exercise <span className="hint">They are published with the session.</span></label>
         <textarea id="n-notes" className="textarea" value={notes} maxLength={limits.blockNotes} onChange={(event) => setNotes(event.target.value)} />
       </div>
       <Actions>
@@ -427,7 +428,7 @@ export function DeleteSheet({ open, onClose, doc }: Pair & { doc: WorkoutDoc }) 
         </p>
         <Actions>
           <SubmitButton className="btn btn--danger" pending="Deleting">{template ? "Delete template" : "Delete session"}</SubmitButton>
-          <button type="button" className="btn btn--quiet" onClick={onClose}>{template ? "Keep template" : "Keep session"}</button>
+          <button type="button" className="btn btn--quiet" data-autofocus onClick={onClose}>{template ? "Keep template" : "Keep session"}</button>
         </Actions>
       </form>
     </Sheet>

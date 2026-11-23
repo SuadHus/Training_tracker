@@ -204,11 +204,11 @@ The masthead is a 4px ink rule, the name, and three links (This week, All weeks,
 
 ### Set row (session screen)
 
-Set number, last time, inputs, done button. Logged: a solid square with a tick, the numbers settle to regular weight. Next: the row sits on `mark`, the set number is inverted, the inputs have 2px ink edges and show what a tap on done will log in ink, and barbell exercises show the plates per side underneath.
+Set number, last time, inputs, done button. Every control is named with its exercise and set ("Bench press, Set 2 kg"). Logged: a solid square with a tick, the numbers settle to regular weight. Next: the row sits on `mark`, the set number is inverted, the inputs have 2px ink edges and show what a tap on done will log in ink, and barbell exercises show the plates per side underneath.
 
 ### Sheet
 
-`<Sheet>` is the native dialog: from the bottom on a phone, centred on a desk.
+`<Sheet>` is the native dialog: from the bottom on a phone, centred on a desk. On opening, focus goes to the safe answer of a question (`data-autofocus`), else to the first field when there is a keyboard and a mouse. On a touch screen it stays on Close, so the keyboard does not cover the sheet before it is read.
 
 ### Theme switch
 

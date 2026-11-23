@@ -6,7 +6,7 @@ import {
   addBlockSessionAction, addBlockWeekAction, deleteBlockAction, removeBlockWeekAction, renameBlockAction,
 } from "@/src/actions/training";
 import { blockLimits, loadBlock, weekOfBlock, type BlockLine, type BlockSession } from "@/src/lib/block-store";
-import { dateLabel, dayShort, weekRange } from "@/src/lib/day-format";
+import { dateLabel, dayLabel, dayShort, weekRange } from "@/src/lib/day-format";
 import { requireOwner } from "@/src/lib/owner";
 import { rowLabel } from "@/src/lib/sheet-import";
 import { addDays, stockholmDay } from "@/src/lib/workout-doc";
@@ -32,18 +32,24 @@ function status(session: BlockSession, today: string): { label: string; classNam
   return null;
 }
 
+/**
+ * One exercise of a session. Before the session is finished the line is the plan. After,
+ * it is what was done, with the plan struck through where it differs; an exercise that
+ * was skipped says so in words.
+ */
 function Line({ line, finished }: { line: BlockLine; finished: boolean }) {
   const planned = line.planned.map((row) => rowLabel(row, line.tracking)).join("; ");
   const done = line.done.map((row) => rowLabel(row, line.tracking)).join("; ");
+  if (!finished) {
+    return <li><span className={styles.lineName}>{line.exercise}</span><span className={styles.lineDone}>{planned}</span></li>;
+  }
   return (
     <li>
       <span className={styles.lineName}>{line.exercise}</span>
-      {finished && done ? (
-        <>
-          <span className={styles.lineDone}>{done}</span>
-          {planned !== done && <span className={styles.linePlan}><span className="sr">Planned: </span>{planned}</span>}
-        </>
-      ) : <span className={styles.lineDone}>{planned}</span>}
+      {done
+        ? <span className={styles.lineDone}><span className="sr">Done: </span>{done}</span>
+        : <span className={styles.lineSkipped}>Not done</span>}
+      {planned !== done && <span className={styles.linePlan}><span className="sr">Planned: </span>{planned}</span>}
     </li>
   );
 }
@@ -80,16 +86,22 @@ export default async function Block({ params, searchParams }: Props) {
       {block.weekList.map(({ week, start, sessions }) => (
         <section className="row row--section row--stack" id={`week-${week}`} key={week} aria-labelledby={`week-${week}-h`}>
           <h2 className="row-margin" id={`week-${week}-h`}>
-            {week === current ? <span className={styles.nowMark}>Week {week}</span> : <>Week {week}</>}
+            {week === current ? <><span className={styles.nowMark}>Week {week}</span><span className="sr"> (this week)</span></> : <>Week {week}</>}
             <small>{weekRange(start)}</small>
           </h2>
           {sessions.length === 0 ? <p className="empty-line">No sessions in this week.</p> : (
             <ul className={styles.weekGrid}>
               {sessions.map((session) => {
                 const mark = status(session, today);
+                // A session keeps its week when its day is moved: outside the week's dates it shows the full date.
+                const moved = session.day < start || session.day > addDays(start, 6);
                 return (
                   <li key={session.id} className={styles.sessionCell}>
-                    <p className={styles.cellDay}>{dayShort(session.day)}{mark && <> <span className={mark.className}>{mark.label}</span></>}</p>
+                    <p className={styles.cellDay}>
+                      {moved ? dayLabel(session.day) : dayShort(session.day)}
+                      {moved && <> <span className="tag">Moved</span></>}
+                      {mark && <> <span className={mark.className}>{mark.label}</span></>}
+                    </p>
                     <p className={styles.title}><Link href={`/admin/workouts/${session.id}`}>{session.title}</Link></p>
                     {session.lines.length > 0
                       ? <ul className={styles.cellLines}>{session.lines.map((line, at) => <Line key={at} line={line} finished={session.status === "completed"} />)}</ul>
@@ -130,7 +142,7 @@ export default async function Block({ params, searchParams }: Props) {
               </select>
             </div>
             <SubmitButton pending="Adding">Add session</SubmitButton>
-            <p className={`${styles.full} hint`}>The day decides which week the session lands in.</p>
+            <p className={`${styles.full} hint`}>The day decides which week the session lands in. A session stays in its week if its day is moved later.</p>
           </form>
           <details className={styles.more}>
             <summary>Rename or add notes</summary>

@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { BarLoad, perSide } from "@/app/ui/bar-load";
 import { Icon } from "@/app/ui/icons";
 import { Notation } from "@/app/ui/notation";
 import { dayLabel } from "@/src/lib/day-format";
 import {
-  STANDARD_BAR_KG, collapseSets, formatNumber, hasResult, isLogged, setNotation,
+  STANDARD_BAR_KG, collapseSets, formatNumber, hasResult, isLogged, limits, setNotation,
   type BlockDoc, type ExerciseInfo, type FieldInfo, type SetDoc, type SetTarget,
 } from "@/src/lib/workout-doc";
 import {
@@ -39,7 +39,15 @@ type BlockProps = {
   newId: () => string;
 };
 
-export function ExerciseBlock(props: BlockProps) {
+/** Put focus somewhere sensible once the thing that had it is gone from the page. */
+export function focusSoon(id: string) {
+  setTimeout(() => document.getElementById(id)?.focus(), 80);
+}
+
+export const addSetId = (blockId: string) => `add-set-${blockId}`;
+
+// Memoised: logging or typing in one exercise leaves the others as they are drawn.
+export const ExerciseBlock = memo(function ExerciseBlock(props: BlockProps) {
   const { index, count, block, exercise, history, mode, nextSetId, dispatch, open } = props;
   const name = exercise?.name ?? "Unknown exercise";
   const tracking = exercise?.tracking ?? "weight_reps";
@@ -53,7 +61,7 @@ export function ExerciseBlock(props: BlockProps) {
     { label: "Notes", icon: "note", onSelect: () => open({ kind: "notes", blockId: block.id }) },
     { label: "Rest time", icon: "timer", onSelect: () => open({ kind: "rest", blockId: block.id }) },
     { label: "Replace exercise", icon: "swap", onSelect: () => open({ kind: "picker", replace: block.id }) },
-    { label: "Add warm-up set", icon: "plus", onSelect: () => dispatch({ type: "addSet", blockId: block.id, setId: props.newId(), warmup: true }) },
+    { label: "Add warm-up set", icon: "plus", disabled: block.sets.length >= limits.setsPerBlock, onSelect: () => dispatch({ type: "addSet", blockId: block.id, setId: props.newId(), warmup: true }) },
     "separator",
     { label: "Move up", icon: "up", disabled: index === 0, onSelect: () => dispatch({ type: "moveBlock", blockId: block.id, to: index - 1 }) },
     { label: "Move down", icon: "down", disabled: index === count - 1, onSelect: () => dispatch({ type: "moveBlock", blockId: block.id, to: index + 1 }) },
@@ -119,7 +127,10 @@ export function ExerciseBlock(props: BlockProps) {
         )}
         <button
           type="button"
+          id={addSetId(block.id)}
           className={`btn btn--quiet btn--wide ${styles.addSet}`}
+          aria-label={`Add set to ${name}`}
+          disabled={block.sets.length >= limits.setsPerBlock}
           onClick={() => dispatch({ type: "addSet", blockId: block.id, setId: props.newId() })}
         >
           <Icon name="plus" small />Add set
@@ -127,7 +138,7 @@ export function ExerciseBlock(props: BlockProps) {
       </section>
     </li>
   );
-}
+});
 
 function LastTime({ history, tracking }: { history: ExerciseHistory; tracking: ExerciseInfo["tracking"] }) {
   const runs = collapseSets(history.sets.filter((set) => !set.warmup));
@@ -158,7 +169,7 @@ function previousText(previous: HistorySet, tracking: ExerciseInfo["tracking"]) 
   return setNotation({ ...previous.measures, rpe: null }, tracking);
 }
 
-function SetRow({ block, set, at, label, shortLabel, state, exercise, tracking, history, fields, dispatch, open, onLogged }: RowProps) {
+function SetRow({ block, set, at, label, shortLabel, state, exercise, exerciseName, tracking, history, fields, dispatch, open, onLogged }: RowProps) {
   const row = useRef<HTMLTableRowElement>(null);
   const [flagged, setFlagged] = useState<string | null>(null);
   const flagTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -232,7 +243,12 @@ function SetRow({ block, set, at, label, shortLabel, state, exercise, tracking, 
       label: "Remove set",
       icon: "trash" as const,
       danger: true,
-      onSelect: () => (logged ? open({ kind: "removeSet", blockId: block.id, setId: set.id }) : dispatch({ type: "removeSet", blockId: block.id, setId: set.id })),
+      onSelect: () => {
+        if (logged) return open({ kind: "removeSet", blockId: block.id, setId: set.id });
+        dispatch({ type: "removeSet", blockId: block.id, setId: set.id });
+        // The row and its menu are gone; the exercise's own Add set button is the nearest thing left.
+        focusSoon(addSetId(block.id));
+      },
     },
   ];
 
@@ -243,7 +259,7 @@ function SetRow({ block, set, at, label, shortLabel, state, exercise, tracking, 
     <>
       <tr ref={row} className={state === "next" ? `${styles.setRow} marked` : styles.setRow} data-state={state} aria-current={state === "next" ? "step" : undefined}>
         <th scope="row" className={styles.setCell}>
-          <Menu label={`${label} options`} items={items} align="start">
+          <Menu label={`${exerciseName}, ${label} options`} items={items} align="start">
             <span className={styles.setNo}>{shortLabel}</span>
           </Menu>
         </th>
@@ -254,7 +270,7 @@ function SetRow({ block, set, at, label, shortLabel, state, exercise, tracking, 
                 type="button"
                 className={styles.prev}
                 disabled={logged}
-                aria-label={`Copy previous ${previousText(previous, tracking)}`}
+                aria-label={`${exerciseName}, ${label}: copy previous ${previousText(previous, tracking)}`}
                 onClick={() => edit({
                   load: previous.measures.load, reps: previous.measures.reps,
                   duration: previous.measures.duration, distance: previous.measures.distance,
@@ -268,7 +284,7 @@ function SetRow({ block, set, at, label, shortLabel, state, exercise, tracking, 
           </td>
         )}
         {specs.map((spec) => {
-          const text = `${label} ${spec.key === "load" ? spec.head : spec.head.toLowerCase()}`;
+          const text = `${exerciseName}, ${label} ${spec.key === "load" ? spec.head : spec.head.toLowerCase()}`;
           return (
             <td key={spec.key} className={styles.inputCell}>
               <MeasureInput
@@ -289,7 +305,7 @@ function SetRow({ block, set, at, label, shortLabel, state, exercise, tracking, 
           <MeasureInput
             codec={rpeCodec}
             value={source.rpe}
-            label={`${label} RPE${log ? "" : " target"}`}
+            label={`${exerciseName}, ${label} RPE${log ? "" : " target"}`}
             placeholder="RPE"
             className={`${styles.input} ${styles.rpe}`}
             onValue={(value) => edit({ rpe: value })}
@@ -302,7 +318,7 @@ function SetRow({ block, set, at, label, shortLabel, state, exercise, tracking, 
               type="button"
               className={styles.done}
               aria-pressed={logged}
-              aria-label={`${label} done`}
+              aria-label={`${exerciseName}, ${label} done`}
               onClick={toggleDone}
             >
               <Icon name="check" />

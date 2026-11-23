@@ -28,8 +28,8 @@ export function ConfirmForm({ action, label, subject, confirmLabel, keepLabel, c
       {children}
       {asking ? (
         <>
-          <button className="btn btn--danger btn--small">{confirmLabel}<span className="sr">: {subject}</span></button>
-          <button type="button" ref={keep} className="btn btn--plain btn--small" onClick={() => setAsking(false)}>{keepLabel}</button>
+          <button className="btn btn--danger">{confirmLabel}<span className="sr">: {subject}</span></button>
+          <button type="button" ref={keep} className="btn btn--plain" onClick={() => setAsking(false)}>{keepLabel}</button>
         </>
       ) : (
         <button type="button" ref={trigger} className={`btn btn--quiet ${styles.dangerQuiet}`} onClick={() => setAsking(true)}>{label}<span className="sr"> {subject}</span></button>

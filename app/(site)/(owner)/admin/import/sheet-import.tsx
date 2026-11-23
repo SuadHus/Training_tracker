@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { importBlockAction, importSheetAction } from "@/src/actions/training";
 import { dayLabel, weekRange } from "@/src/lib/day-format";
 import {
@@ -38,7 +38,12 @@ export function SheetImport({ known, startAs, today }: {
   const id = useId();
 
   const library = useMemo(() => new Map(known.map((exercise) => [sheetKey(exercise.name), exercise.tracking])), [known]);
-  const { workouts, found } = useMemo(() => readSheet(text), [text]);
+  const { workouts, found, clipped } = useMemo(() => readSheet(text), [text]);
+  const created = useRef<HTMLParagraphElement>(null);
+  // The button that was pressed is gone once the templates exist: focus goes to what was made.
+  useEffect(() => {
+    if (done) created.current?.focus();
+  }, [done]);
   useEffect(() => {
     setPicks(workouts.map((workout) => ({ on: true, title: suggestTitle(workout) })));
     setMessage(null);
@@ -93,7 +98,7 @@ export function SheetImport({ known, startAs, today }: {
           <li key={at}>
             <span className={styles.sheetName}>
               {entry.name}
-              {!library.has(sheetKey(entry.name)) && <> <span className="tag" title={`New exercise, read as: ${trackingLabels[tracking]}`}>New</span></>}
+              {!library.has(sheetKey(entry.name)) && <> <span className="tag">New</span><span className="sr">, read as {trackingLabels[tracking].toLowerCase()}</span></>}
             </span>
             <span className={styles.sheetRows}>{entry.rows.map((row) => rowLabel(row, tracking)).join("; ")}</span>
             {entry.notes.length > 0 && <span className={styles.sheetNote}>{entry.notes.join(". ")}</span>}
@@ -109,7 +114,7 @@ export function SheetImport({ known, startAs, today }: {
         <div className="row row--stack">
           <h2 className="row-margin">Created</h2>
           <div>
-            <p className="notice" role="status">
+            <p className="notice" role="status" tabIndex={-1} ref={created}>
               Created {plural(done.templates.length, "template", "templates")}
               {done.newExercises.length > 0 && <> and added {plural(done.newExercises.length, "exercise", "exercises")} to the library</>}.
             </p>
@@ -145,7 +150,8 @@ export function SheetImport({ known, startAs, today }: {
           />
           <p className={styles.sheetHint}>
             Understood: sets as 3 or 1+2, reps as 5 or 6-8, time as 60s or 1:30, loads as 100 or 25kg, bw and bw+5kg, RPE9.
-            Anything else on a row is kept as a note on the exercise.
+            Anything else on a row is kept as a note on the exercise. Notes are published with a session once it is finished,
+            so take out a remark you want to keep to yourself.
           </p>
           <fieldset className={styles.modePick}>
             <legend className="label">Make</legend>
@@ -161,6 +167,15 @@ export function SheetImport({ known, startAs, today }: {
         <div className="row row--stack">
           <div className="row-margin" />
           <p className="notice notice--alert" role="alert">No workouts found in that text. Each row needs an exercise name in its first cell.</p>
+        </div>
+      )}
+
+      {clipped && (
+        <div className="row row--stack">
+          <div className="row-margin" />
+          <p className="notice" role="status">
+            That is more than one import reads: only the first {sheetLimits.rows.toLocaleString("en-GB")} rows and {sheetLimits.columns} columns are looked at.
+          </p>
         </div>
       )}
 
@@ -205,7 +220,10 @@ export function SheetImport({ known, startAs, today }: {
             <div className="form">
               <div>
                 <label className="label" htmlFor={`${id}-name`}>Name</label>
-                <input id={`${id}-name`} className="field" value={blockTitle} maxLength={limits.title} autoComplete="off" onChange={(event) => setBlockTitle(event.target.value)} />
+                <input
+                  id={`${id}-name`} className="field" value={blockTitle} maxLength={limits.title} autoComplete="off" required
+                  aria-describedby={blockTitle.trim() ? undefined : `${id}-why`} onChange={(event) => setBlockTitle(event.target.value)}
+                />
               </div>
               <div>
                 <label className="label" htmlFor={`${id}-start`}>First day of week 1</label>
@@ -222,7 +240,7 @@ export function SheetImport({ known, startAs, today }: {
           </div>
           {plan.map(({ week, sessions: planned }) => (
             <div className="row row--stack" key={week}>
-              <div className="row-margin">Week {week}<small>{weekRange(addDays(first, 7 * (week - 1)))}</small></div>
+              <h3 className="row-margin">Week {week}<small>{weekRange(addDays(first, 7 * (week - 1)))}</small></h3>
               <ul className={styles.weekGrid}>
                 {planned.map(({ index, day }) => (
                   <li key={index} className={styles.sessionCell}>
@@ -241,7 +259,7 @@ export function SheetImport({ known, startAs, today }: {
         <div className="row row--section row--stack">
           <h2 className="row-margin">Create</h2>
           <div>
-            <p className={styles.lede}>
+            <p className={styles.lede} role="status">
               {mode === "block"
                 ? <>{plural(plan.length, "week", "weeks")} with {plural(sessions, "session", "sessions")} will be planned from {dayLabel(first)}</>
                 : <>{plural(chosen.length, "template", "templates")} will be created</>}
@@ -265,7 +283,7 @@ export function SheetImport({ known, startAs, today }: {
                 </button>
               )}
               {mode === "templates" && unnamed && <span className="soft small">Give every chosen workout a name.</span>}
-              {mode === "block" && !blockTitle.trim() && <span className="soft small">Give the block a name.</span>}
+              {mode === "block" && !blockTitle.trim() && <span className="soft small" id={`${id}-why`}>Give the block a name.</span>}
             </p>
           </div>
         </div>
