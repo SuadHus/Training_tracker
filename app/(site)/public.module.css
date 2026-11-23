@@ -13,6 +13,12 @@
 .totals { color: var(--ink-soft); }
 .totals b { color: var(--ink); font-weight: 800; }
 
+.marginHead { font-size: inherit; font-weight: 700; line-height: 1.2; }
+@media (min-width: 40em) {
+  .todayVitals { max-width: 21rem; }
+  .todayVitals:global(.facts) tr:first-child > * { border-top: 0; padding-top: 0; }
+}
+
 /* Links stay 44px tall to touch without changing the rhythm of the page. */
 .tap { display: inline-flex; align-items: center; min-height: 2.75rem; margin-block: calc((1lh - 2.75rem) / 2); }
 .tapBlock { display: inline-block; padding-block: 0.6rem; margin-block: -0.6rem; }

@@ -1,11 +1,15 @@
 import Link from "next/link";
+import { after } from "next/server";
 import { BarLoad } from "@/app/ui/bar-load";
 import { Notation } from "@/app/ui/notation";
 import { WeekDots, WeekDotsHead, WeekStrip } from "@/app/ui/week-strip";
 import { dateLabel, dayLabel, weekAnchor, weekRange } from "@/src/lib/day-format";
-import { publicBestLifts, publicJournal, publicWeeks, type BestLift } from "@/src/lib/public-data";
+import type { HealthProvider } from "@/src/lib/health-providers";
+import { syncStaleHealthProviders } from "@/src/lib/health-sync";
+import { dailyVitals, publicBestLifts, publicJournal, publicWeeks, type BestLift } from "@/src/lib/public-data";
 import { formatTotal, platesPerSide, STANDARD_BAR_KG, stockholmDay, weekStart } from "@/src/lib/workout-doc";
 import { excerptOf } from "./_parts/format";
+import { vitalRows, VitalsTable } from "./_parts/vitals";
 import { HeaviestBar, trainedDays, WeekHeader, WeekSessions, WeekText, WeekTotals } from "./_parts/week";
 import styles from "./public.module.css";
 
@@ -16,8 +20,22 @@ const platesFor = (lift: BestLift) => platesPerSide(lift.load, lift.barKg ?? STA
 export default async function Home() {
   const today = stockholmDay();
   const thisWeek = weekStart(today);
-  const [weeks, lifts, [post]] = await Promise.all([publicWeeks({ limit: 9 }), publicBestLifts(6), publicJournal(1)]);
+  const [weeks, lifts, [post], vitals] = await Promise.all([
+    publicWeeks({ limit: 9 }), publicBestLifts(6), publicJournal(1), dailyVitals(today),
+  ]);
 
+  const missingProviders: HealthProvider[] = [];
+  if (process.env.PUBLISH_GOOGLE_HEALTH === "true" && (vitals?.sleep_minutes == null || vitals?.resting_heart_rate == null)) {
+    missingProviders.push("google-health");
+  }
+  if (process.env.PUBLISH_WITHINGS === "true" && vitals?.body_weight_kg == null) {
+    missingProviders.push("withings");
+  }
+  if (missingProviders.length > 0) {
+    after(() => syncStaleHealthProviders({ providers: missingProviders }));
+  }
+
+  const morning = vitalRows(vitals);
   const current = weeks.find((week) => week.start === thisWeek);
   const open = weeks[0];
   const earlier = weeks.slice(1);
@@ -38,6 +56,19 @@ export default async function Home() {
           : <p className={styles.totals}>No sessions yet this week.</p>}
       </div>
     </div>
+
+    {morning.length > 0 && (
+      <section className="row row--stack" aria-labelledby="today-vitals">
+        <h2 className={`row-margin ${styles.marginHead}`} id="today-vitals">
+          This morning
+          <small>{dayLabel(today)}</small>
+        </h2>
+        <div>
+          <VitalsTable vitals={vitals} className={styles.todayVitals} />
+          {vitals?.sleep_minutes != null && <p className={styles.footnote}>Sleep is shown for the day it ended.</p>}
+        </div>
+      </section>
+    )}
 
     {open && <>
       {open.start !== thisWeek && <WeekHeader week={open} />}

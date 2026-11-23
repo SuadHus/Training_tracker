@@ -1,6 +1,6 @@
 # Training Log
 
-A public training log for one lifter. The owner defines workouts, logs every set from a phone, and each finished session is published with its exercises, sets and loads next to that morning's bodyweight, sleep and resting heart rate. Dates use Europe/Stockholm, and weeks are ISO weeks ("v. 47").
+A public training log for one lifter. The owner defines workouts, logs every set from a phone, and each finished session is published with its exercises, sets and loads next to that morning's bodyweight, sleep and resting heart rate. Today's morning vitals are also shown on the home page every day, even on rest days. Dates use Europe/Stockholm, and weeks are ISO weeks ("v. 47").
 
 ## Local development
 

@@ -9,6 +9,7 @@ import { exerciseMeta, formatSpan, formatTotal, isId } from "@/src/lib/workout-d
 import { Opener } from "../../_parts/opener";
 import { WeekText } from "../../_parts/week";
 import { Dec, SetTable, topOf } from "../../_parts/sets";
+import { vitalRows, VitalsTable } from "../../_parts/vitals";
 import styles from "../../public.module.css";
 
 export const dynamic = "force-dynamic";
@@ -21,15 +22,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: workout ? `${workout.title}, ${dayLong(workout.day)}` : "Workout" };
 }
 
-function Sleep({ minutes }: { minutes: number }) {
-  const hours = Math.floor(minutes / 60);
-  const rest = Math.round(minutes % 60);
-  return <>
-    {hours > 0 && <>{hours} <span className="unit">h</span> </>}
-    {(rest > 0 || hours === 0) && <>{rest} <span className="unit">min</span></>}
-  </>;
-}
-
 export default async function WorkoutPage({ params }: Props) {
   const { id } = await params;
   if (!isId(id)) notFound();
@@ -37,12 +29,7 @@ export default async function WorkoutPage({ params }: Props) {
   if (!workout) notFound();
 
   const { summary, vitals, muscles, older, newer } = workout;
-  const morning = [
-    vitals?.body_weight_kg != null && ["Bodyweight", <><Dec value={vitals.body_weight_kg} /> <span className="unit">kg</span></>],
-    vitals?.sleep_minutes != null && ["Sleep", <Sleep minutes={vitals.sleep_minutes} />],
-    vitals?.resting_heart_rate != null && ["Resting heart rate", <><Num value={vitals.resting_heart_rate} /> <span className="unit">bpm</span></>],
-    vitals?.sleep_score != null && ["Sleep score", <Num value={vitals.sleep_score} />],
-  ].filter((row) => row !== false) as Array<[string, React.ReactNode]>;
+  const morning = vitalRows(vitals);
   const hasSets = summary.workSets > 0;
 
   return <>
@@ -99,14 +86,7 @@ export default async function WorkoutPage({ params }: Props) {
                 </tbody>
               </table>
             )}
-            {morning.length > 0 && (
-              <table className="facts">
-                <caption>That morning</caption>
-                <tbody>
-                  {morning.map(([label, value]) => <tr key={label}><th scope="row">{label}</th><td className="num">{value}</td></tr>)}
-                </tbody>
-              </table>
-            )}
+            {morning.length > 0 && <VitalsTable vitals={vitals} caption="That morning" />}
           </div>
           {vitals?.sleep_minutes != null && <p className={styles.footnote}>Sleep is shown for the day it ended.</p>}
           {muscles.length >= 2 && (

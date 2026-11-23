@@ -766,3 +766,58 @@ test("a pasted sheet becomes templates, and exercises are added once", { skip },
   await assert.rejects(store.importTemplates(sheet, []), WorkoutInputError);
 });
 
+test("daily vitals load for rest days without a workout and apply manual precedence", { skip }, async () => {
+  await reset();
+  const restDay = "2026-11-24";
+  const prevGoogle = process.env.PUBLISH_GOOGLE_HEALTH;
+  const prevWithings = process.env.PUBLISH_WITHINGS;
+  try {
+    await schema.rows(
+      `INSERT INTO health_observations (provider, external_id, metric, local_day, observed_at, value) VALUES
+        ('google-health', $1, 'sleep_minutes', $2::date, '2026-11-24T06:30:00Z', 450),
+        ('google-health', $1, 'resting_heart_rate', $2::date, NULL, 57),
+        ('withings', 'late', 'body_weight_kg', $2::date, '2026-11-24T10:30:00Z', 90.2),
+        ('withings', 'morning', 'body_weight_kg', $2::date, '2026-11-24T06:15:00Z', 88.7)`,
+      [restDay, restDay],
+    );
+
+    process.env.PUBLISH_GOOGLE_HEALTH = "true";
+    process.env.PUBLISH_WITHINGS = "true";
+    assert.deepEqual(await pub.dailyVitals(restDay), {
+      resting_heart_rate: 57,
+      sleep_minutes: 450,
+      sleep_score: null,
+      body_weight_kg: 88.7,
+    });
+
+    process.env.PUBLISH_GOOGLE_HEALTH = "false";
+    process.env.PUBLISH_WITHINGS = "false";
+    assert.deepEqual(await pub.dailyVitals(restDay), {
+      resting_heart_rate: null,
+      sleep_minutes: null,
+      sleep_score: null,
+      body_weight_kg: null,
+    });
+
+    process.env.PUBLISH_GOOGLE_HEALTH = "true";
+    process.env.PUBLISH_WITHINGS = "true";
+    await schema.rows(
+      "INSERT INTO published_daily_vitals (local_day, resting_heart_rate, sleep_minutes, sleep_score) VALUES ($1::date, 55, NULL, 86)",
+      [restDay],
+    );
+    assert.deepEqual(await pub.dailyVitals(restDay), {
+      resting_heart_rate: 55,
+      sleep_minutes: 450,
+      sleep_score: 86,
+      body_weight_kg: 88.7,
+    });
+  } finally {
+    if (prevGoogle === undefined) delete process.env.PUBLISH_GOOGLE_HEALTH;
+    else process.env.PUBLISH_GOOGLE_HEALTH = prevGoogle;
+    if (prevWithings === undefined) delete process.env.PUBLISH_WITHINGS;
+    else process.env.PUBLISH_WITHINGS = prevWithings;
+    await schema.rows("DELETE FROM health_observations WHERE local_day = $1::date", [restDay]);
+    await schema.rows("DELETE FROM published_daily_vitals WHERE local_day = $1::date", [restDay]);
+  }
+});
+

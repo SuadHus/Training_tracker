@@ -156,8 +156,16 @@ function autoSyncState(): AutoSyncState {
   return syncGlobal.healthAutoSync;
 }
 
-export async function syncStaleHealthProviders(now = new Date()): Promise<HealthSyncResult[]> {
+export async function syncStaleHealthProviders({
+  now = new Date(),
+  providers,
+}: {
+  now?: Date;
+  providers?: HealthProvider[];
+} = {}): Promise<HealthSyncResult[]> {
   if (!hasHealthKey()) return [];
+  const allowed = providers ? new Set(providers) : null;
+  if (allowed && allowed.size === 0) return [];
   try {
     const state = autoSyncState();
     const { rows } = await query<{ provider: string; credentials: string }>(
@@ -170,7 +178,7 @@ export async function syncStaleHealthProviders(now = new Date()): Promise<Health
 
     for (const row of rows) {
       const provider = providerName(row.provider);
-      if (!provider || !providerOptions(provider)) continue;
+      if (!provider || (allowed && !allowed.has(provider)) || !providerOptions(provider)) continue;
       const running = state.inFlight.get(provider);
       if (running) {
         tasks.push(running);

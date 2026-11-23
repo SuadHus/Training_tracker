@@ -82,10 +82,10 @@ export default async function Studio({ searchParams }: { searchParams: Promise<{
     <div className="row row--section row--stack">
       <h2 className="row-margin">Day vitals</h2>
       <div>
-        <p className={`soft ${styles.measure}`}>Values you enter appear on completed workouts for the selected date and take precedence over synced values.</p>
+        <p className={`soft ${styles.measure}`}>Values you enter appear on the home page for today and on completed workouts for the selected date, taking precedence over synced values.</p>
         <form className={`form-actions ${styles.dayForm}`} method="get">
           <div>
-            <label className="label" htmlFor="vitals-day">Workout date</label>
+            <label className="label" htmlFor="vitals-day">Date</label>
             <input id="vitals-day" className="field" type="date" name="day" defaultValue={day} required aria-describedby="vitals-day-echo" />
             <p id="vitals-day-echo" className={styles.dateEcho}>Showing {dayLabel(day)}</p>
           </div>
@@ -102,7 +102,7 @@ export default async function Studio({ searchParams }: { searchParams: Promise<{
                     ? process.env.PUBLISH_WITHINGS === "true"
                     : process.env.PUBLISH_GOOGLE_HEALTH === "true";
                   return <tr key={`${provider}:${metric}`}>
-                    <th scope="row">{metricNames[metric]}<span className={`hint ${styles.hintBlock}`}>{publicationEnabled ? (provider === "withings" ? "Public on workouts for this date" : "Public when there’s no manual value") : "Private"}</span></th>
+                    <th scope="row">{metricNames[metric]}<span className={`hint ${styles.hintBlock}`}>{publicationEnabled ? (provider === "withings" ? "Public on today’s home page and on workouts for this date" : "Public when there’s no manual value") : "Private"}</span></th>
                     <td className="num">{formatNumber(Number(value))}</td>
                   </tr>;
                 })}
