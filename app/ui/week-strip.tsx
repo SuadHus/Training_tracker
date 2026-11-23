@@ -3,19 +3,33 @@ import { addDays } from "@/src/lib/workout-doc";
 const weekdays = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 const names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] as const;
 
-/** Seven columns for one week. A trained day carries its date in a solid square; today is underlined. */
-export function WeekStrip({ start, trained, today }: { start: string; trained: ReadonlySet<string>; today?: string }) {
+/** Seven columns for one week. A trained day carries a solid square, a planned day an outlined one, and today is underlined. */
+export function WeekStrip({
+  start, trained, planned, today,
+}: {
+  start: string;
+  trained: ReadonlySet<string>;
+  planned?: ReadonlySet<string>;
+  today?: string;
+}) {
   return (
-    <ol className="strip" aria-label="Days trained this week">
+    <ol className="strip" aria-label="Days trained and planned this week">
       {weekdays.map((weekday, index) => {
         const day = addDays(start, index);
         const done = trained.has(day);
+        const upcoming = !done && Boolean(planned?.has(day));
         return (
-          <li key={day} className="strip-day" data-trained={done || undefined} data-today={day === today || undefined}>
+          <li
+            key={day}
+            className="strip-day"
+            data-trained={done || undefined}
+            data-planned={upcoming || undefined}
+            data-today={day === today || undefined}
+          >
             <span aria-hidden="true">{weekday}</span>
             <span className="strip-mark num">
               <span className="sr">{names[index]} </span>{Number(day.slice(8))}
-              <span className="sr">{done ? ", trained" : ", no session"}{day === today ? ", today" : ""}</span>
+              <span className="sr">{done ? ", trained" : upcoming ? ", planned" : ", no session"}{day === today ? ", today" : ""}</span>
             </span>
           </li>
         );

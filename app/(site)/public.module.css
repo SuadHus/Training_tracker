@@ -1,8 +1,16 @@
 /* Page layout for the public site. Tokens only; the shared classes come from globals.css. */
 
-.homeOpener { align-items: start; }
+.homeOpener { align-items: start; row-gap: 1.25rem; }
 .openerTop { align-items: start; }
 .openerBody { display: grid; gap: 0.75rem; min-width: 0; align-content: start; }
+.openerVitals { grid-column: 1 / -1; min-width: 0; }
+@media (min-width: 40em) {
+  .openerVitals { grid-column: 2; max-width: 21rem; }
+}
+@media (min-width: 52em) {
+  .homeOpenerWithVitals { grid-template-columns: var(--margin) minmax(0, 21rem) minmax(14rem, 1fr); }
+  .homeOpenerWithVitals .openerVitals { grid-column: 3; max-width: 22rem; justify-self: end; width: 100%; }
+}
 .lede { max-width: 38rem; font-size: var(--text-m); color: var(--ink-soft); }
 .lede b { color: var(--ink); font-weight: 800; }
 
@@ -12,12 +20,6 @@
 
 .totals { color: var(--ink-soft); }
 .totals b { color: var(--ink); font-weight: 800; }
-
-.marginHead { font-size: inherit; font-weight: 700; line-height: 1.2; }
-@media (min-width: 40em) {
-  .todayVitals { max-width: 21rem; }
-  .todayVitals:global(.facts) tr:first-child > * { border-top: 0; padding-top: 0; }
-}
 
 /* Links stay 44px tall to touch without changing the rhythm of the page. */
 .tap { display: inline-flex; align-items: center; min-height: 2.75rem; margin-block: calc((1lh - 2.75rem) / 2); }

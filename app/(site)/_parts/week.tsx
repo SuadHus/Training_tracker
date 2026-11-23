@@ -5,7 +5,7 @@ import { Notation, Num } from "@/app/ui/notation";
 import { WeekDots } from "@/app/ui/week-strip";
 import { dayLabel, dayShort, weekAnchor, weekLabel, weekName, weekRange } from "@/src/lib/day-format";
 import { formatSpan, formatTotal, platesPerSide, STANDARD_BAR_KG } from "@/src/lib/workout-doc";
-import type { SessionBlock, SessionSummary, WeekSummary } from "@/src/lib/public-data";
+import type { PlannedSessionSummary, SessionBlock, SessionSummary, WeekSummary } from "@/src/lib/public-data";
 import { plural } from "./format";
 import { hasValue } from "./sets";
 import styles from "../public.module.css";
@@ -23,7 +23,7 @@ export function trainedDays(week: WeekSummary): Set<string> {
 }
 
 /** 3 sessions, 33 working sets, 34 250 kg. Numbers bold, the rest soft. */
-export function WeekTotals({ week, sofar }: { week: WeekSummary; sofar?: boolean }) {
+export function WeekTotals({ week, sofar, planned = 0 }: { week: WeekSummary; sofar?: boolean; planned?: number }) {
   const count = week.sessions.length;
   return (
     <p className={styles.totals}>
@@ -31,6 +31,7 @@ export function WeekTotals({ week, sofar }: { week: WeekSummary; sofar?: boolean
       {week.workSets > 0 && <>, <b>{week.workSets}</b> {plural(week.workSets, "working set", "working sets")}</>}
       {week.volume > 0 && <>, <b className="num nowrap">{formatTotal(week.volume)}&#8201;kg</b></>}
       {sofar && " so far"}
+      {planned > 0 && <>, <b>{planned}</b> planned</>}
     </p>
   );
 }
@@ -96,16 +97,24 @@ export function HeaviestBar({ week }: { week: WeekSummary }) {
   );
 }
 
-export function SessionRow({ session, today, drawn }: { session: SessionSummary; today?: string; drawn?: SessionBlock }) {
+export function SessionRow({
+  session, today, highlightToday, drawn,
+}: {
+  session: SessionSummary;
+  today?: string;
+  highlightToday?: boolean;
+  drawn?: SessionBlock;
+}) {
   // The bar already drawn large above the list is not drawn again beside its session.
   const lead = session.blocks.filter((block) => block !== drawn).find(drawable);
   const lines = session.blocks
     .map((block) => ({ block, runs: block.runs.filter((run) => hasValue(run.measures)) }))
     .filter(({ runs }) => runs.length > 0);
+  const markToday = highlightToday ?? session.day === today;
   return (
     <div className="row">
       <div className="row-margin">
-        {session.day === today ? <span className={styles.today}>{dayShort(session.day)}</span> : dayShort(session.day)}
+        {markToday ? <span className={styles.today}>{dayShort(session.day)}</span> : dayShort(session.day)}
       </div>
       <div className={styles.session}>
         <div className={styles.sessionHead}>
@@ -139,8 +148,77 @@ export function SessionRow({ session, today, drawn }: { session: SessionSummary;
   );
 }
 
+export function PlannedSessionRow({
+  session, highlightToday = false,
+}: {
+  session: PlannedSessionSummary;
+  highlightToday?: boolean;
+}) {
+  return (
+    <div className="row">
+      <div className="row-margin">
+        {highlightToday ? <span className={styles.today}>{dayShort(session.day)}</span> : dayShort(session.day)}
+      </div>
+      <div className={styles.session}>
+        <div className={styles.sessionHead}>
+          <span className={styles.sessionTitle}>{session.title}</span>{" "}
+          <span className="tag">Planned</span>
+        </div>
+        {session.blocks.length > 0 && (
+          <ul className={styles.lines}>
+            {session.blocks.map((block, index) => (
+              <li key={index} className={styles.line}>
+                <span className="soft">{block.exercise.name}</span>
+                {block.runs.length > 0 && (
+                  <span className={styles.runs}>
+                    {block.runs.map((run, at) => (
+                      <Fragment key={at}>
+                        {at > 0 && ", "}
+                        {hasValue(run) ? (
+                          <Notation measures={run} tracking={block.exercise.tracking} count={run.count} />
+                        ) : (
+                          <span className="notation">
+                            <span className="reps num">{run.count}</span>
+                            <span className="unit"> {plural(run.count, "set", "sets")}</span>
+                            {run.rpe !== null && <span className="rpe"><span className="sr">, RPE </span><Num value={run.rpe} /></span>}
+                          </span>
+                        )}
+                      </Fragment>
+                    ))}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** A week fully open: its sessions, oldest first, as the week strip reads Monday to Sunday. */
-export function WeekSessions({ week, today, underHero = false }: { week: WeekSummary; today?: string; underHero?: boolean }) {
-  const drawn = underHero ? heaviestSet(week)?.block : undefined;
-  return <>{week.sessions.map((session) => <SessionRow key={session.id} session={session} today={today} drawn={drawn} />)}</>;
+export function WeekSessions({
+  week, planned = [], today, underHero = false,
+}: {
+  week?: WeekSummary;
+  planned?: PlannedSessionSummary[];
+  today?: string;
+  underHero?: boolean;
+}) {
+  const drawn = week && underHero ? heaviestSet(week)?.block : undefined;
+  const items = [
+    ...(week?.sessions.map((session, index) => ({ kind: "completed" as const, day: session.day, rank: 0, index, session })) ?? []),
+    ...planned.map((session, index) => ({ kind: "planned" as const, day: session.day, rank: 1, index, session })),
+  ].sort((a, b) => a.day.localeCompare(b.day) || a.rank - b.rank || a.index - b.index);
+
+  // At most one yellow highlighter stroke per screen.
+  const highlightId = today ? items.find((item) => item.day === today)?.session.id : undefined;
+
+  return <>
+    {items.map((item) => (
+      item.kind === "completed"
+        ? <SessionRow key={item.session.id} session={item.session} highlightToday={item.session.id === highlightId} drawn={drawn} />
+        : <PlannedSessionRow key={item.session.id} session={item.session} highlightToday={item.session.id === highlightId} />
+    ))}
+  </>;
 }

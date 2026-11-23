@@ -821,3 +821,60 @@ test("daily vitals load for rest days without a workout and apply manual precede
   }
 });
 
+test("upcoming planned sessions expose target plans for the nearest active week without leaking logged sets", { skip }, async () => {
+  await reset();
+  // Use last ISO week so the completed workout is never in the future regardless of when tests run.
+  const mon = addDays(thisMonday, -7);
+  const wed = addDays(mon, 2);
+  const fri = addDays(mon, 4);
+  const sat = addDays(mon, 5);
+  const nextMon = thisMonday;
+  const afterNextMon = addDays(thisMonday, 1);
+
+  // Past/missed planned session earlier in the week should not appear.
+  await planned(mon, [{ exercise: squat, sets: [{ target: { reps: 5, load: 100 } }] }], "Missed");
+  // Completed session on Wednesday should not appear in planned.
+  await completed(wed, [{ exercise: squat, sets: [lifted(5, 100)] }], "Done today");
+  // Planned session on Wednesday with in-progress actuals + warmups + rep range targets.
+  const wedPlan = await planned(wed, [
+    {
+      exercise: press,
+      sets: [
+        { warmup: true, target: { reps: 5, load: 20 } },
+        { target: { reps: 8, repsMax: 12, load: 40, rpe: 8 }, reps: 10, load: 45, done: true },
+        { target: { reps: 8, repsMax: 12, load: 40, rpe: 8 } },
+      ],
+    },
+    { exercise: plank, sets: [{ target: { duration: 60 } }, { target: { duration: 60 } }] },
+  ], "Upper");
+  const friPlan = await planned(fri, [{ exercise: row, sets: [{}] }], "Back");
+  const nextPlan = await planned(nextMon, [{ exercise: squat, sets: [{ target: { reps: 5, load: 105 } }] }], "Next week");
+
+  const thisWeekUpcoming = await pub.publicUpcomingPlanned(wed);
+  assert.ok(thisWeekUpcoming);
+  assert.equal(thisWeekUpcoming.weekStart, mon);
+  assert.deepEqual(thisWeekUpcoming.sessions.map((session) => [session.id, session.day, session.title]), [
+    [wedPlan, wed, "Upper"],
+    [friPlan, fri, "Back"],
+  ]);
+  // Target sets only: warmup excluded, in-progress actual 45×10 ignored, consecutive identical targets collapsed.
+  assert.deepEqual(thisWeekUpcoming.sessions[0].blocks.map((block) => [block.exercise.name, block.runs]), [
+    ["Press", [{ reps: 8, repsMax: 12, load: 40, rpe: 8, duration: null, distance: null, count: 2 }]],
+    ["Plank", [{ reps: null, repsMax: null, load: null, rpe: null, duration: 60, distance: null, count: 2 }]],
+  ]);
+  assert.deepEqual(thisWeekUpcoming.sessions[1].blocks[0].runs, [
+    { reps: null, repsMax: null, load: null, rpe: null, duration: null, distance: null, count: 1 },
+  ]);
+  // Unfinished planned workout still has no public detail page.
+  assert.equal(await pub.publicWorkout(wedPlan), null);
+
+  // On Saturday (after Friday's plan), falls forward to next week's planned sessions.
+  const later = await pub.publicUpcomingPlanned(sat);
+  assert.ok(later);
+  assert.equal(later.weekStart, nextMon);
+  assert.deepEqual(later.sessions.map((session) => session.id), [nextPlan]);
+
+  // After all planned sessions, returns null.
+  assert.equal(await pub.publicUpcomingPlanned(afterNextMon), null);
+});
+

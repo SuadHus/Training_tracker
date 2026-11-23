@@ -6,11 +6,11 @@ import { WeekDots, WeekDotsHead, WeekStrip } from "@/app/ui/week-strip";
 import { dateLabel, dayLabel, weekAnchor, weekRange } from "@/src/lib/day-format";
 import type { HealthProvider } from "@/src/lib/health-providers";
 import { syncStaleHealthProviders } from "@/src/lib/health-sync";
-import { dailyVitals, publicBestLifts, publicJournal, publicWeeks, type BestLift } from "@/src/lib/public-data";
+import { dailyVitals, publicBestLifts, publicJournal, publicUpcomingPlanned, publicWeeks, type BestLift } from "@/src/lib/public-data";
 import { formatTotal, platesPerSide, STANDARD_BAR_KG, stockholmDay, weekStart } from "@/src/lib/workout-doc";
-import { excerptOf } from "./_parts/format";
+import { excerptOf, plural } from "./_parts/format";
 import { vitalRows, VitalsTable } from "./_parts/vitals";
-import { HeaviestBar, trainedDays, WeekHeader, WeekSessions, WeekText, WeekTotals } from "./_parts/week";
+import { HeaviestBar, PlannedSessionRow, trainedDays, WeekHeader, WeekSessions, WeekText, WeekTotals } from "./_parts/week";
 import styles from "./public.module.css";
 
 export const dynamic = "force-dynamic";
@@ -20,8 +20,8 @@ const platesFor = (lift: BestLift) => platesPerSide(lift.load, lift.barKg ?? STA
 export default async function Home() {
   const today = stockholmDay();
   const thisWeek = weekStart(today);
-  const [weeks, lifts, [post], vitals] = await Promise.all([
-    publicWeeks({ limit: 9 }), publicBestLifts(6), publicJournal(1), dailyVitals(today),
+  const [weeks, lifts, [post], vitals, upcoming] = await Promise.all([
+    publicWeeks({ limit: 9 }), publicBestLifts(6), publicJournal(1), dailyVitals(today), publicUpcomingPlanned(today),
   ]);
 
   const missingProviders: HealthProvider[] = [];
@@ -37,43 +37,71 @@ export default async function Home() {
 
   const morning = vitalRows(vitals);
   const current = weeks.find((week) => week.start === thisWeek);
-  const open = weeks[0];
+  const plannedThisWeek = upcoming?.weekStart === thisWeek ? upcoming.sessions : [];
+  const plannedLater = upcoming && upcoming.weekStart !== thisWeek ? upcoming : null;
+  const plannedDays = new Set(plannedThisWeek.map((session) => session.day));
+  const previousOpen = !current ? weeks[0] : null;
   const earlier = weeks.slice(1);
   // A best lift means something once there is more than one session to be best among.
   const sessionCount = weeks.reduce((count, week) => count + week.sessions.length, 0);
   const barLifts = lifts.some((lift) => lift.equipment === "barbell" && platesFor(lift));
 
   return <>
-    <div className={`row opener ${styles.homeOpener}`}>
+    <div className={`row opener ${styles.homeOpener} ${morning.length > 0 ? styles.homeOpenerWithVitals : ""}`}>
       <div className="row-margin">
         <h1 className="week-no"><WeekText day={thisWeek} /></h1>
         <small>{weekRange(thisWeek)}</small>
       </div>
       <div className={styles.openerBody}>
-        <WeekStrip start={thisWeek} trained={current ? trainedDays(current) : new Set()} today={today} />
-        {!weeks.length ? <p className={styles.totals}>Nothing logged yet.</p>
-          : current ? <WeekTotals week={current} sofar />
+        <WeekStrip
+          start={thisWeek}
+          trained={current ? trainedDays(current) : new Set()}
+          planned={plannedDays}
+          today={today}
+        />
+        {current ? <WeekTotals week={current} sofar planned={plannedThisWeek.length} />
+          : plannedThisWeek.length > 0 ? (
+            <p className={styles.totals}>
+              <b>{plannedThisWeek.length}</b> {plural(plannedThisWeek.length, "session", "sessions")} planned this week.
+            </p>
+          )
+          : !weeks.length ? <p className={styles.totals}>Nothing logged yet.</p>
           : <p className={styles.totals}>No sessions yet this week.</p>}
       </div>
+      {morning.length > 0 && (
+        <section className={styles.openerVitals} aria-label={`This morning, ${dayLabel(today)}`}>
+          <VitalsTable vitals={vitals} caption={`This morning, ${dayLabel(today)}`} />
+          {vitals?.sleep_minutes != null && <p className={styles.footnote}>Sleep is shown for the day it ended.</p>}
+        </section>
+      )}
     </div>
 
-    {morning.length > 0 && (
-      <section className="row row--stack" aria-labelledby="today-vitals">
-        <h2 className={`row-margin ${styles.marginHead}`} id="today-vitals">
-          This morning
-          <small>{dayLabel(today)}</small>
-        </h2>
-        <div>
-          <VitalsTable vitals={vitals} className={styles.todayVitals} />
-          {vitals?.sleep_minutes != null && <p className={styles.footnote}>Sleep is shown for the day it ended.</p>}
-        </div>
-      </section>
-    )}
+    {(current || plannedThisWeek.length > 0) && <>
+      {current && <HeaviestBar week={current} />}
+      <WeekSessions week={current} planned={plannedThisWeek} today={today} underHero />
+    </>}
 
-    {open && <>
-      {open.start !== thisWeek && <WeekHeader week={open} />}
-      <HeaviestBar week={open} />
-      <WeekSessions week={open} today={today} underHero />
+    {plannedLater && <>
+      <div className="row row--section">
+        <h2 className="row-margin">
+          <span className="week-no"><WeekText day={plannedLater.weekStart} /></span>
+          <small>{weekRange(plannedLater.weekStart)}</small>
+        </h2>
+        <div className={styles.weekHead}>
+          <p className={styles.totals}>
+            Up next: <b>{plannedLater.sessions.length}</b> {plural(plannedLater.sessions.length, "session", "sessions")} planned.
+          </p>
+        </div>
+      </div>
+      {plannedLater.sessions.map((session) => (
+        <PlannedSessionRow key={session.id} session={session} />
+      ))}
+    </>}
+
+    {previousOpen && <>
+      <WeekHeader week={previousOpen} />
+      <HeaviestBar week={previousOpen} />
+      <WeekSessions week={previousOpen} today={today} underHero />
     </>}
 
     {earlier.length > 0 && (

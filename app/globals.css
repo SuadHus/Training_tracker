@@ -323,6 +323,8 @@ main.page { flex: 1 0 auto; padding-bottom: 4rem; }
 .strip-mark { display: grid; place-items: center; width: 1.75rem; height: 1.75rem; font-size: var(--text-s); font-weight: 700; }
 .strip-day[data-trained] { color: var(--ink); font-weight: 700; }
 .strip-day[data-trained] .strip-mark { background: var(--ink); color: var(--ground); }
+.strip-day[data-planned] { color: var(--ink); font-weight: 700; }
+.strip-day[data-planned] .strip-mark { border: 2px solid var(--ink); }
 .strip-day[data-today] { color: var(--ink); }
 .strip-day[data-today]::after { content: ""; width: 1.75rem; border-top: 3px solid var(--ink); }
 

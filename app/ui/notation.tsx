@@ -24,12 +24,12 @@ export function Clock({ seconds }: { seconds: number }) {
  * reads +10 × 6, and unloaded reps read BW × 12.
  */
 export function Notation({ measures, tracking = "weight_reps", count = 1, warmup = false }: {
-  measures: Measures;
+  measures: Measures & { repsMax?: number | null };
   tracking?: Tracking;
   count?: number;
   warmup?: boolean;
 }) {
-  const { reps, load, rpe, duration, distance } = measures;
+  const { reps, repsMax = null, load, rpe, duration, distance } = measures;
   const times = <span className="times" aria-hidden="true">×</span>;
   const repeat = count > 1 && <><span className="sr"> times </span>{times}<span className="reps num">{count}</span><span className="sr"> sets</span></>;
   const effort = rpe !== null && <span className="rpe"><span className="sr">, RPE </span><Num value={rpe} /></span>;
@@ -40,9 +40,10 @@ export function Notation({ measures, tracking = "weight_reps", count = 1, warmup
     const weight = load === null || (bodyweight && load === 0)
       ? (bodyweight ? <span className="load">BW</span> : null)
       : <span className="load">{bodyweight && "+"}<Num value={load} /></span>;
+    const range = repsMax !== null && repsMax > reps;
     return <span className={className}>
       {weight}{weight && <><span className="sr"> kilograms, </span>{times}</>}
-      <span className="reps num">{reps}</span><span className="sr"> reps</span>
+      <span className="reps num">{reps}{range && <>–{repsMax}</>}</span><span className="sr"> reps</span>
       {!weight && <span className="unit"> reps</span>}
       {repeat}{effort}
     </span>;
@@ -62,7 +63,7 @@ export function Notation({ measures, tracking = "weight_reps", count = 1, warmup
     </span>;
   }
   if (load !== null) {
-    return <span className={className}><span className="load"><Num value={load} /></span><span className="unit"> kg</span>{effort}</span>;
+    return <span className={className}><span className="load"><Num value={load} /></span><span className="unit"> kg</span>{repeat}{effort}</span>;
   }
   return null;
 }

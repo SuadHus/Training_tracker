@@ -1,6 +1,6 @@
 import { query } from "./db";
 import {
-  collapseSets, isId, isoWeek, summarizeSets, topSet, weekStart,
+  collapseSets, isId, isoWeek, stockholmDay, summarizeSets, topSet, weekStart,
   type CustomValues, type Equipment, type ExerciseInfo, type FieldInfo, type Measures, type SetRun, type Tracking,
   type WorkSummary,
 } from "./workout-doc";
@@ -127,6 +127,63 @@ export type SessionSummary = {
 export type WeekSummary = {
   year: number; week: number; start: string; sessions: SessionSummary[]; workSets: number; volume: number;
 };
+export type PlannedRun = Measures & { repsMax: number | null; count: number };
+export type PlannedBlock = { exercise: PublicExercise; runs: PlannedRun[] };
+export type PlannedSessionSummary = { id: string; title: string; day: string; blocks: PlannedBlock[] };
+export type UpcomingPlannedWeek = { weekStart: string; sessions: PlannedSessionSummary[] };
+
+export async function publicUpcomingPlanned(today = stockholmDay()): Promise<UpcomingPlannedWeek | null> {
+  const { rows: workouts } = await query<{ id: string; title: string; day: string; week_start: string }>(
+    `WITH next_week AS (
+        SELECT date_trunc('week', min(local_day))::date AS start
+          FROM workouts WHERE status = 'planned' AND local_day >= $1::date
+      )
+      SELECT w.id, w.title, w.local_day::text AS day, nw.start::text AS week_start
+        FROM workouts w JOIN next_week nw ON nw.start IS NOT NULL
+          AND w.local_day >= GREATEST($1::date, nw.start)
+          AND w.local_day < nw.start + 7
+        WHERE w.status = 'planned'
+        ORDER BY w.local_day, w.created_at, w.id`,
+    [today],
+  );
+  if (!workouts.length) return null;
+
+  const { rows: sets } = await query<ExerciseFieldsRow & MeasureRow & {
+    workout_id: string; block_id: string; set_id: string | null; reps_max: number | null;
+  }>(
+    `SELECT b.workout_id, b.id AS block_id, ${exerciseFields}, s.id AS set_id,
+        s.target_reps AS reps, s.target_reps_max AS reps_max, s.target_load_kg::float8 AS load,
+        s.target_rpe::float8 AS rpe, s.target_duration_seconds::float8 AS duration,
+        s.target_distance_meters::float8 AS distance
+      FROM workout_exercises b JOIN exercises e ON e.id = b.exercise_id
+      LEFT JOIN workout_sets s ON s.workout_exercise_id = b.id AND NOT s.warmup
+      WHERE b.workout_id = ANY($1::uuid[])
+      ORDER BY b.workout_id, b.position, b.id, s.position NULLS LAST, s.id NULLS LAST`,
+    [workouts.map((workout) => workout.id)],
+  );
+
+  const byWorkout = Map.groupBy(sets, (row) => row.workout_id);
+  const sessions: PlannedSessionSummary[] = workouts.map((workout) => {
+    const blocks: PlannedBlock[] = [];
+    for (const [, group] of Map.groupBy(byWorkout.get(workout.id) ?? [], (row) => row.block_id)) {
+      const runs: PlannedRun[] = [];
+      for (const row of group) {
+        if (row.set_id === null) continue;
+        const last = runs.at(-1);
+        if (last && last.reps === row.reps && last.repsMax === row.reps_max && last.load === row.load &&
+          last.rpe === row.rpe && last.duration === row.duration && last.distance === row.distance) {
+          last.count += 1;
+        } else {
+          runs.push({ ...measuresOf(row), repsMax: row.reps_max, count: 1 });
+        }
+      }
+      blocks.push({ exercise: publicExercise(group[0]), runs });
+    }
+    return { id: workout.id, title: workout.title, day: workout.day, blocks };
+  });
+
+  return { weekStart: workouts[0].week_start, sessions };
+}
 
 export async function publicWeeks(options: { limit?: number } = {}): Promise<WeekSummary[]> {
   const { rows: workouts } = await query<{ id: string; title: string; day: string; started_at: Date | null }>(
