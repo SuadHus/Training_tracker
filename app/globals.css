@@ -5,10 +5,11 @@
   Square corners throughout. Tokens first, then base elements, then shared parts.
   Page-specific layout lives in CSS modules next to each page.
 
-  Two themes. Paper is the sheet as printed; night is its negative, white type on
-  black, for a dim gym. The colour tokens are written out three times below (paper,
-  and night for its two selectors) plus once for .marked. tests/theme-tokens.test.ts
-  keeps the copies in step and checks the contrast of both themes.
+  Two themes. Paper is the sheet as printed; night is a deep charcoal slate with
+  soft off-white type and graphite rules, tuned for dim rooms without pure-black
+  glare. The night tokens are written twice below (for the device setting and for
+  an explicit choice); tests/theme-tokens.test.ts keeps both copies in step and
+  checks the contrast of both themes.
 */
 
 :root {
@@ -16,11 +17,12 @@
 
   /* Ground and ink */
   --ground: #ffffff;
-  --wash: #f3f3f1;        /* resting inputs, hover fields, quiet bands */
+  --surface: #ffffff;     /* inputs, sheets and menus; lifts gently above ground at night */
+  --wash: #f3f3f1;        /* hover fields, quiet bands, alerts */
   --ink: #000000;
   --ink-soft: #46494e;    /* secondary text, 9:1 on ground */
   --ink-mute: #666a70;    /* light figures and placeholders, 5.5:1 on ground */
-  --rule: #000000;        /* section rules and table heads */
+  --rule: #000000;        /* section rules, table heads and control outlines */
   --hairline: #c9cbcf;    /* row separators */
 
   /* Plates: 25 red, 20 blue, 15 yellow, 10 green, 5 white, 2.5 black, 1.25 steel */
@@ -41,14 +43,20 @@
   --on-slab-soft: #c9cbcf;
   --slab-line: #46494e;
 
+  --backdrop: rgb(0 0 0 / 0.55);
   --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.25' stroke-linecap='square'%3E%3Cpolyline points='5 9 12 16 19 9'/%3E%3C/svg%3E");
 
   /* State. The marker yellow is a highlighter stroke: it says "you are here".
      Nothing else has a colour: focus, errors and deleting are drawn in ink, so
-     that red, blue, yellow and green only ever mean plates. The stroke is the
-     same yellow in both themes, and what sits on it is always black. */
+     that red, blue, yellow and green only ever mean plates. At night the full
+     next-set row uses a quiet warm-tinted band with a gold accent instead of a
+     bright yellow flood. */
   --mark: #ffee7a;
   --on-mark: #000000;
+  --mark-surface: #ffee7a;
+  --mark-edge: #ffee7a;
+  --mark-accent: #000000;
+  --on-mark-accent: #ffffff;
 
   /* Type */
   --font: var(--font-sans), "Helvetica Neue", Arial, system-ui, sans-serif;
@@ -80,81 +88,72 @@
 @media screen and (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     color-scheme: dark;
-    --ground: #000000;
-    --wash: #1c1c1c;
-    --ink: #ffffff;
-    --ink-soft: #bfc2c7;
-    --ink-mute: #8f9399;
-    --rule: #ffffff;
-    --hairline: #3d3f43;
-    --plate-25: #e8323c;
-    --plate-20: #3f73e6;
-    --plate-15: #f4b800;
-    --plate-10: #23a955;
-    --plate-5: #ffffff;
+    --ground: #111214;
+    --surface: #181a1e;
+    --wash: #1e2025;
+    --ink: #eceef0;
+    --ink-soft: #adb3bc;
+    --ink-mute: #858c96;
+    --rule: #5f6672;
+    --hairline: #2a2d33;
+    --plate-25: #e5484d;
+    --plate-20: #4c7ef0;
+    --plate-15: #eab618;
+    --plate-10: #2fb162;
+    --plate-5: #e6e8ec;
     --plate-5-edge: transparent;
-    --plate-2-5: #1b1b1d;
-    --plate-2-5-edge: #ffffff;
-    --plate-1-25: #9aa2aa;
-    --bar-steel: #7d848c;
-    --slab: #1c1c1c;
-    --on-slab: #ffffff;
-    --on-slab-soft: #bfc2c7;
-    --slab-line: #4a4d52;
-    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.25' stroke-linecap='square'%3E%3Cpolyline points='5 9 12 16 19 9'/%3E%3C/svg%3E");
+    --plate-2-5: #202328;
+    --plate-2-5-edge: #b8bec8;
+    --plate-1-25: #9aa2ad;
+    --bar-steel: #7f8792;
+    --slab: #1c1e23;
+    --on-slab: #eceef0;
+    --on-slab-soft: #adb3bc;
+    --slab-line: #363a42;
+    --mark: #e5c64b;
+    --on-mark: #111214;
+    --mark-surface: #262316;
+    --mark-edge: #e5c64b;
+    --mark-accent: #e5c64b;
+    --on-mark-accent: #111214;
+    --backdrop: rgb(0 0 0 / 0.72);
+    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23eceef0' stroke-width='2.25' stroke-linecap='square'%3E%3Cpolyline points='5 9 12 16 19 9'/%3E%3C/svg%3E");
   }
 }
 @media screen {
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --ground: #000000;
-    --wash: #1c1c1c;
-    --ink: #ffffff;
-    --ink-soft: #bfc2c7;
-    --ink-mute: #8f9399;
-    --rule: #ffffff;
-    --hairline: #3d3f43;
-    --plate-25: #e8323c;
-    --plate-20: #3f73e6;
-    --plate-15: #f4b800;
-    --plate-10: #23a955;
-    --plate-5: #ffffff;
+    --ground: #111214;
+    --surface: #181a1e;
+    --wash: #1e2025;
+    --ink: #eceef0;
+    --ink-soft: #adb3bc;
+    --ink-mute: #858c96;
+    --rule: #5f6672;
+    --hairline: #2a2d33;
+    --plate-25: #e5484d;
+    --plate-20: #4c7ef0;
+    --plate-15: #eab618;
+    --plate-10: #2fb162;
+    --plate-5: #e6e8ec;
     --plate-5-edge: transparent;
-    --plate-2-5: #1b1b1d;
-    --plate-2-5-edge: #ffffff;
-    --plate-1-25: #9aa2aa;
-    --bar-steel: #7d848c;
-    --slab: #1c1c1c;
-    --on-slab: #ffffff;
-    --on-slab-soft: #bfc2c7;
-    --slab-line: #4a4d52;
-    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.25' stroke-linecap='square'%3E%3Cpolyline points='5 9 12 16 19 9'/%3E%3C/svg%3E");
+    --plate-2-5: #202328;
+    --plate-2-5-edge: #b8bec8;
+    --plate-1-25: #9aa2ad;
+    --bar-steel: #7f8792;
+    --slab: #1c1e23;
+    --on-slab: #eceef0;
+    --on-slab-soft: #adb3bc;
+    --slab-line: #363a42;
+    --mark: #e5c64b;
+    --on-mark: #111214;
+    --mark-surface: #262316;
+    --mark-edge: #e5c64b;
+    --mark-accent: #e5c64b;
+    --on-mark-accent: #111214;
+    --backdrop: rgb(0 0 0 / 0.72);
+    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23eceef0' stroke-width='2.25' stroke-linecap='square'%3E%3Cpolyline points='5 9 12 16 19 9'/%3E%3C/svg%3E");
   }
-}
-
-/* Whatever lies on the highlighter is ink on paper in both themes: inputs, the set
-   number and the plates of the next set keep their printed colours on the yellow. */
-.marked {
-  color-scheme: light;
-  --ground: #ffffff;
-  --wash: #f3f3f1;
-  --ink: #000000;
-  --ink-soft: #46494e;
-  --ink-mute: #666a70;
-  --rule: #000000;
-  --hairline: #c9cbcf;
-  --plate-25: #d4202b;
-  --plate-20: #1d4fb5;
-  --plate-15: #f4b800;
-  --plate-10: #1a9a48;
-  --plate-5: #ffffff;
-  --plate-5-edge: #000000;
-  --plate-2-5: #1b1b1d;
-  --plate-2-5-edge: transparent;
-  --plate-1-25: #8d959d;
-  --bar-steel: #5d636a;
-  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.25' stroke-linecap='square'%3E%3Cpolyline points='5 9 12 16 19 9'/%3E%3C/svg%3E");
-  color: var(--ink);
 }
 
 /* Base ---------------------------------------------------------------------- */
@@ -324,7 +323,7 @@ main.page { flex: 1 0 auto; padding-bottom: 4rem; }
 .strip-day[data-trained] { color: var(--ink); font-weight: 700; }
 .strip-day[data-trained] .strip-mark { background: var(--ink); color: var(--ground); }
 .strip-day[data-planned] { color: var(--ink); font-weight: 700; }
-.strip-day[data-planned] .strip-mark { border: 2px solid var(--ink); }
+.strip-day[data-planned] .strip-mark { border: 2px solid var(--rule); }
 .strip-day[data-today] { color: var(--ink); }
 .strip-day[data-today]::after { content: ""; width: 1.75rem; border-top: 3px solid var(--ink); }
 
@@ -371,13 +370,13 @@ main.page { flex: 1 0 auto; padding-bottom: 4rem; }
 .btn:hover:not(:disabled) { background: var(--ink-soft); border-color: var(--ink-soft); text-decoration: none; }
 .btn:active:not(:disabled) { transform: translateY(1px); }
 .btn:disabled, .btn[aria-disabled="true"] { background: var(--hairline); border-color: var(--hairline); color: var(--ink-soft); }
-.btn--plain { background: var(--ground); color: var(--ink); }
+.btn--plain { background: var(--surface); color: var(--ink); border-color: var(--rule); }
 .btn--plain:hover:not(:disabled) { background: var(--wash); border-color: var(--ink); }
-.btn--plain:disabled { background: var(--ground); color: var(--ink-mute); }
+.btn--plain:disabled { background: var(--surface); color: var(--ink-mute); border-color: var(--hairline); }
 .btn--quiet { min-height: var(--tap); padding: 0 0.5rem; background: none; border-color: transparent; color: var(--ink); font-weight: 700; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
 .btn--quiet:hover:not(:disabled) { background: var(--wash); border-color: transparent; text-decoration-thickness: 2px; }
 /* Deleting is marked by a dashed edge, not by a colour. */
-.btn--danger { background: var(--ground); color: var(--ink); border: 2px dashed var(--ink); }
+.btn--danger { background: var(--surface); color: var(--ink); border: 2px dashed var(--rule); }
 .btn--danger:hover:not(:disabled) { background: var(--wash); border-color: var(--ink); color: var(--ink); }
 .btn--wide { display: flex; width: 100%; }
 .btn--small { min-height: 2.25rem; padding: 0 0.75rem; font-size: var(--text-s); }
@@ -390,7 +389,7 @@ main.page { flex: 1 0 auto; padding-bottom: 4rem; }
   display: block; width: 100%; min-width: 0; min-height: var(--tap);
   padding: 0.5rem 0.7rem;
   font-size: 1.0625rem; line-height: 1.3;
-  background: var(--ground); color: var(--ink);
+  background: var(--surface); color: var(--ink);
   border: 1px solid var(--ink-mute); border-radius: 0;
 }
 .field:hover, .select:hover, .textarea:hover { border-color: var(--ink); }
@@ -410,32 +409,32 @@ main.page { flex: 1 0 auto; padding-bottom: 4rem; }
 .form-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
 
 .check { display: inline-flex; align-items: center; gap: 0.6rem; min-height: var(--tap); font-weight: 500; }
-.check input { appearance: none; width: 1.4rem; height: 1.4rem; margin: 0; border: 2px solid var(--ink); border-radius: 0; background: var(--ground); display: grid; place-items: center; }
-.check input:checked { background: var(--ink); }
+.check input { appearance: none; width: 1.4rem; height: 1.4rem; margin: 0; border: 2px solid var(--rule); border-radius: 0; background: var(--surface); display: grid; place-items: center; }
+.check input:checked { background: var(--ink); border-color: var(--ink); }
 .check input:checked::after { content: ""; width: 0.75rem; height: 0.4rem; border: solid var(--ground); border-width: 0 0 3px 3px; transform: translateY(-0.1rem) rotate(-45deg); }
 
 /* Segmented choice: a row of options, one inverted. */
-.segments { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--ink); }
+.segments { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--rule); background: var(--surface); }
 .segments label { position: relative; }
 .segments input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
 .segments span { display: grid; place-items: center; min-height: var(--tap); padding: 0 0.9rem; font-size: var(--text-s); font-weight: 700; }
-.segments label + label span { border-left: 1px solid var(--ink); }
+.segments label + label span { border-left: 1px solid var(--rule); }
 .segments input:checked + span { background: var(--ink); color: var(--ground); }
 .segments input:focus-visible + span { outline: 3px solid var(--ink); outline-offset: 2px; }
 
 /* Messages. A status line says what happened; an alert says what to do. */
-.notice { padding: 0.7rem 0.9rem; border: 1px solid var(--ink); font-weight: 500; overflow-wrap: anywhere; }
+.notice { padding: 0.7rem 0.9rem; background: var(--surface); border: 1px solid var(--rule); font-weight: 500; overflow-wrap: anywhere; }
 .notice--alert { border: 2px solid var(--ink); background: var(--wash); font-weight: 700; }
 .empty-line { max-width: 36rem; color: var(--ink-soft); }
 .empty-line a, .empty-line button { color: var(--ink); }
 
-.tag { display: inline-block; padding: 0.05rem 0.4rem; border: 1px solid var(--ink); font-size: var(--text-xs); font-weight: 700; white-space: nowrap; vertical-align: 0.1em; }
-.tag--solid { background: var(--ink); color: var(--ground); }
+.tag { display: inline-block; padding: 0.05rem 0.4rem; border: 1px solid var(--rule); font-size: var(--text-xs); font-weight: 700; white-space: nowrap; vertical-align: 0.1em; }
+.tag--solid { background: var(--ink); border-color: var(--ink); color: var(--ground); }
 
 /* Dialogs open from the bottom on a phone, centred on a desk. */
-.sheet { width: min(100%, 34rem); max-width: 100%; max-height: min(92dvh, 46rem); margin: auto auto 0; padding: 0; border: 0; border-top: 4px solid var(--rule); background: var(--ground); color: var(--ink); overflow: hidden; }
+.sheet { width: min(100%, 34rem); max-width: 100%; max-height: min(92dvh, 46rem); margin: auto auto 0; padding: 0; border: 0; border-top: 4px solid var(--rule); background: var(--surface); color: var(--ink); overflow: hidden; }
 .sheet[open] { display: flex; flex-direction: column; }
-.sheet::backdrop { background: rgb(0 0 0 / 0.55); }
+.sheet::backdrop { background: var(--backdrop); }
 .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.5rem 0.5rem 0.5rem 1rem; border-bottom: 1px solid var(--rule); }
 .sheet-head h2 { font-size: var(--text-l); }
 .sheet-body { padding: 1rem; overflow-y: auto; overscroll-behavior: contain; }
@@ -444,7 +443,7 @@ main.page { flex: 1 0 auto; padding-bottom: 4rem; }
   .sheet { margin: auto; border: 2px solid var(--rule); border-top-width: 4px; }
 }
 
-.menu { position: absolute; z-index: 10; min-width: 13rem; padding: 0.25rem 0; background: var(--ground); border: 2px solid var(--rule); }
+.menu { position: absolute; z-index: 10; min-width: 13rem; padding: 0.25rem 0; background: var(--surface); border: 2px solid var(--rule); }
 .menu button, .menu a { display: flex; align-items: center; gap: 0.6rem; width: 100%; min-height: var(--tap); padding: 0 0.9rem; background: none; border: 0; text-align: left; text-decoration: none; font-weight: 500; }
 .menu button:hover, .menu a:hover { background: var(--wash); }
 .menu .danger { text-decoration: underline dashed; text-decoration-thickness: 1px; text-underline-offset: 0.25em; }

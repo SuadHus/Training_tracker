@@ -257,7 +257,7 @@ function SetRow({ block, set, at, label, shortLabel, state, exercise, exerciseNa
 
   return (
     <>
-      <tr ref={row} className={state === "next" ? `${styles.setRow} marked` : styles.setRow} data-state={state} aria-current={state === "next" ? "step" : undefined}>
+      <tr ref={row} className={styles.setRow} data-state={state} aria-current={state === "next" ? "step" : undefined}>
         <th scope="row" className={styles.setCell}>
           <Menu label={`${exerciseName}, ${label} options`} items={items} align="start">
             <span className={styles.setNo}>{shortLabel}</span>
@@ -327,7 +327,7 @@ function SetRow({ block, set, at, label, shortLabel, state, exercise, exerciseNa
         )}
       </tr>
       {state === "next" && barbell && callLoad !== null && (
-        <tr className={`${styles.callout} marked`} data-state="next">
+        <tr className={styles.callout} data-state="next">
           <td colSpan={specs.length + 4}>
             <Callout load={callLoad} barKg={exercise?.barKg ?? null} />
           </td>

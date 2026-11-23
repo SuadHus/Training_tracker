@@ -4,9 +4,9 @@ import { join } from "node:path";
 import test from "node:test";
 import { GROUND, readTheme } from "../src/lib/theme";
 
-// The colour tokens of the two themes are written out more than once in globals.css
-// (CSS has no way to say "the same again"). These tests keep the copies in step and
-// hold both themes to the contrast the design promises.
+// The colour tokens of the night theme are written twice in globals.css
+// (once for the device setting, once for an explicit choice). These tests keep
+// both copies in step and hold both themes to the contrast the design promises.
 
 const css = readFileSync(join(__dirname, "../app/globals.css"), "utf8");
 
@@ -23,7 +23,6 @@ function tokens(selector: string, from = 0): Record<string, string> {
 const paper = tokens(":root");
 const nightByDevice = tokens(':root:not([data-theme="light"])');
 const nightByChoice = tokens(':root[data-theme="dark"]');
-const marked = tokens(".marked");
 const colours = Object.keys(nightByChoice);
 
 function luminance(hex: string): number {
@@ -43,19 +42,11 @@ function contrast(a: string, b: string): number {
 test("night is written the same for the device setting and for the reader's choice", () => {
   assert.deepEqual(nightByDevice, nightByChoice);
   assert.equal(nightByChoice["color-scheme"], "dark");
-  assert.ok(colours.length >= 20);
+  assert.ok(colours.length >= 25);
 });
 
-test("every colour night changes exists on paper, and the highlighter scope restores paper exactly", () => {
+test("every colour night changes exists on paper", () => {
   for (const name of colours) assert.ok(name in paper, `${name} is missing from :root`);
-  for (const [name, value] of Object.entries(marked)) {
-    assert.equal(value, paper[name], `${name} inside .marked differs from paper`);
-  }
-  // Everything night changes that can show inside a highlighted row is restored there.
-  const shown = colours.filter((name) => !/^--(slab|on-slab)/.test(name) && name !== "--slab-line");
-  for (const name of shown) assert.ok(name in marked, `${name} is not restored inside .marked`);
-  // The highlighter itself is one yellow with black on it in both themes.
-  assert.ok(!("--mark" in nightByChoice) && !("--on-mark" in nightByChoice));
 });
 
 test("the ground behind the browser chrome matches the page in both themes", () => {
@@ -66,28 +57,35 @@ test("the ground behind the browser chrome matches the page in both themes", () 
 for (const [name, theme] of [["paper", paper], ["night", { ...paper, ...nightByChoice }]] as const) {
   test(`${name}: text and marks keep their contrast`, () => {
     const on = (token: string, ground: string) => contrast(theme[token], theme[ground]);
-    // Body text and the two quieter inks, on the ground and on the wash behind inputs and alerts.
-    for (const ground of ["--ground", "--wash"]) {
-      assert.ok(on("--ink", ground) >= 15, `ink on ${ground}`);
+    // Body text and the two quieter inks, on the ground, elevated surface, wash, and next-set band.
+    for (const ground of ["--ground", "--surface", "--wash", "--mark-surface"]) {
+      assert.ok(on("--ink", ground) >= 13, `ink on ${ground}: ${on("--ink", ground)}`);
       assert.ok(on("--ink-soft", ground) >= 7, `ink-soft on ${ground}: ${on("--ink-soft", ground)}`);
+    }
+    assert.ok(on("--ink", "--ground") >= 15, `ink on ground: ${on("--ink", "--ground")}`);
+    for (const ground of ["--ground", "--surface", "--wash"]) {
       assert.ok(on("--ink-mute", ground) >= 4.5, `ink-mute on ${ground}: ${on("--ink-mute", ground)}`);
     }
-    // Field borders are drawn in ink-mute: a control's edge needs 3:1.
-    assert.ok(on("--ink-mute", "--ground") >= 3);
+    // Structural rules and control outlines need at least 3:1 against the ground.
+    assert.ok(on("--rule", "--ground") >= 3, `rule on ground: ${on("--rule", "--ground")}`);
+    assert.ok(on("--ink-mute", "--surface") >= 3, `ink-mute on surface: ${on("--ink-mute", "--surface")}`);
     // A disabled button is soft ink on a hairline ground.
-    assert.ok(on("--ink-soft", "--hairline") >= 4.5);
-    // Plates and steel are graphics: 3:1 against the ground. Yellow on paper is the known
-    // exception (the plate's height says 15 kg too); the plate that matches the ground has an edge.
+    assert.ok(on("--ink-soft", "--hairline") >= 4.5, `ink-soft on hairline: ${on("--ink-soft", "--hairline")}`);
+    // Plates and steel are graphics: 3:1 against the ground (and at night against the next-set band too).
     for (const plate of ["--plate-25", "--plate-20", "--plate-10", "--plate-1-25", "--bar-steel"]) {
       assert.ok(on(plate, "--ground") >= 3, `${plate} on ground: ${on(plate, "--ground")}`);
+      if (name === "night") {
+        assert.ok(on(plate, "--mark-surface") >= 3, `${plate} on mark-surface: ${on(plate, "--mark-surface")}`);
+      }
     }
     const edged = name === "paper" ? "--plate-5" : "--plate-2-5";
     assert.ok(on(edged, "--ground") < 1.3, `${edged} blends into the ground`);
-    assert.ok(contrast(theme[`${edged}-edge`], theme["--ground"]) >= 15, `${edged} has a visible edge`);
-    // The highlighter carries black text; the slab carries its own inks.
-    assert.ok(contrast(theme["--on-mark"], theme["--mark"]) >= 15);
-    assert.ok(on("--on-slab", "--slab") >= 15);
-    assert.ok(on("--on-slab-soft", "--slab") >= 7);
+    assert.ok(contrast(theme[`${edged}-edge`], theme["--ground"]) >= 9, `${edged} has a visible edge`);
+    // Highlights and the rest-timer slab keep high contrast.
+    assert.ok(contrast(theme["--on-mark"], theme["--mark"]) >= 10, `on-mark on mark`);
+    assert.ok(contrast(theme["--on-mark-accent"], theme["--mark-accent"]) >= 10, `on-mark-accent on mark-accent`);
+    assert.ok(on("--on-slab", "--slab") >= 14, `on-slab on slab: ${on("--on-slab", "--slab")}`);
+    assert.ok(on("--on-slab-soft", "--slab") >= 7, `on-slab-soft on slab: ${on("--on-slab-soft", "--slab")}`);
   });
 }
 

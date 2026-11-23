@@ -20,21 +20,25 @@ colors:
   bar-steel: "#5d636a"
   slab: "#000000"
   on-slab: "#ffffff"
-  night-ground: "#000000"
-  night-wash: "#1c1c1c"
-  night-ink: "#ffffff"
-  night-ink-soft: "#bfc2c7"
-  night-ink-mute: "#8f9399"
-  night-hairline: "#3d3f43"
-  night-plate-25: "#e8323c"
-  night-plate-20: "#3f73e6"
-  night-plate-15: "#f4b800"
-  night-plate-10: "#23a955"
-  night-plate-5: "#ffffff"
-  night-plate-2-5: "#1b1b1d"
-  night-plate-1-25: "#9aa2aa"
-  night-bar-steel: "#7d848c"
-  night-slab: "#1c1c1c"
+  night-ground: "#111214"
+  night-surface: "#181a1e"
+  night-wash: "#1e2025"
+  night-ink: "#eceef0"
+  night-ink-soft: "#adb3bc"
+  night-ink-mute: "#858c96"
+  night-rule: "#5f6672"
+  night-hairline: "#2a2d33"
+  night-mark: "#e5c64b"
+  night-mark-surface: "#262316"
+  night-plate-25: "#e5484d"
+  night-plate-20: "#4c7ef0"
+  night-plate-15: "#eab618"
+  night-plate-10: "#2fb162"
+  night-plate-5: "#e6e8ec"
+  night-plate-2-5: "#202328"
+  night-plate-1-25: "#9aa2ad"
+  night-bar-steel: "#7f8792"
+  night-slab: "#1c1e23"
 typography:
   display:
     fontFamily: "Schibsted Grotesk, Helvetica Neue, Arial, sans-serif"
@@ -127,15 +131,15 @@ One highlighter yellow, `mark`. It is the single "you are here" stroke: today's 
 
 ### Night
 
-The second theme is the negative of the print: white type on a black ground, for a dim gym and a phone held between sets. Nothing else changes. The same tokens carry other values (`night-*` above), so every rule, table and control inverts with the page: buttons become white with black type, a logged set is a white square with a black tick.
+The second theme is a deep charcoal slate (`#111214`) with soft off-white type (`#eceef0`) and muted graphite rules (`#5f6672`), built for a dim gym and a phone held between sets without pure-black halation or blinding white borders. Inputs, sheets and menus lift gently onto `--surface` (`#181a1e`). Nothing structural changes; the same tokens carry night values so every rule, table and control follows automatically.
 
-- The plate colours are a step brighter so that red and blue keep 3:1 on black. The white plate loses its outline and the black 2.5 kg plate gains a white one: whichever plate matches the ground gets the edge.
-- The highlighter stays the same yellow, and what lies on it stays ink on paper. A row on `mark` carries the class `.marked`, which restores the paper tokens inside it, so its inputs, set number and plates look exactly as they do in print. Text set straight on the yellow uses `on-mark`.
-- The rest timer is the one inverted band of the paper theme. At night it is a `slab` a step above the ground rather than a white block under the thumb.
+- The plate colours are tuned to stay crisp against charcoal without glare. The white plate loses its outline and the black 2.5 kg plate gains a soft steel edge: whichever plate matches the ground gets the edge.
+- Compact highlights (today's date, current week or session) use a warmer, less glaring gold (`#e5c64b`) with dark ink. The full-width next-set row in the session logger uses a quiet dark-amber band (`#262316`) with a gold top edge, gold set-number badge, and dark inputs so it never flashes bright yellow or white in a dark room.
+- The rest timer sits on `--slab` (`#1c1e23`), cleanly separated from the page ground.
 
 The page follows the device unless the reader picks a theme: three words in the footer, Auto, Light and Dark. A choice is kept in a `theme` cookie and rendered into `<html data-theme>` by the server, so no page flashes the other theme and no script runs in the head. The session screen has no footer and takes the same choice.
 
-The colour tokens are written out more than once in `app/globals.css` (paper, night for its two selectors, and `.marked`). `tests/theme-tokens.test.ts` keeps the copies identical and holds both themes to their contrast.
+The night colour tokens are written twice in `app/globals.css` (for the device setting and for an explicit choice). `tests/theme-tokens.test.ts` keeps both copies identical and holds both themes to their contrast.
 
 ### Named Rules
 

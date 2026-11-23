@@ -8,7 +8,7 @@ export const THEME_COOKIE = "theme";
 export const THEMES: readonly Theme[] = ["auto", "light", "dark"];
 
 /** The colours behind the browser's own chrome, matching --ground in each theme. */
-export const GROUND = { light: "#ffffff", dark: "#000000" } as const;
+export const GROUND = { light: "#ffffff", dark: "#111214" } as const;
 
 export function readTheme(value: string | undefined | null): Theme {
   return value === "light" || value === "dark" ? value : "auto";

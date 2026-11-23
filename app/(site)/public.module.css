@@ -85,7 +85,7 @@ th .tableWeek { font-size: var(--text-l); }
 /* Journal */
 .entry { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem 1.5rem; align-items: start; }
 .thumb { display: block; width: 5rem; height: 5rem; object-fit: cover; }
-.photo { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: contain; background: var(--hairline); }
+.photo { display: block; width: 100%; height: auto; aspect-ratio: 3 / 2; object-fit: contain; background: var(--wash); }
 @media (min-width: 40em) {
   .thumb { width: 8rem; height: 6rem; }
 }

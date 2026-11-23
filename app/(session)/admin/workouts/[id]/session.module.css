@@ -173,7 +173,7 @@
   font: 700 1.125rem/1 var(--font);
   text-align: center;
   color: var(--ink);
-  background: var(--ground);
+  background: var(--surface);
   border: 1px solid var(--ink-mute);
   border-radius: 0;
   scroll-margin: 7rem 0 10rem;
@@ -192,14 +192,14 @@
   height: var(--tap);
   padding: 0;
   color: transparent;
-  background: var(--ground);
+  background: var(--surface);
   border: 1px solid var(--ink-mute);
   border-radius: 0;
 }
 .done svg { stroke-width: 3; stroke-linecap: butt; }
 .done:hover { border-color: var(--ink); }
 
-/* Logged: a black square with a white tick; the numbers settle to plain text. */
+/* Logged: a solid square with a tick; the numbers settle to plain text. */
 .setRow[data-state="logged"] .setNo { font-weight: 400; color: var(--ink-mute); }
 .setRow[data-state="logged"] .prev,
 .setRow[data-state="logged"] .noPrev { color: var(--ink-mute); }
@@ -207,19 +207,19 @@
 .setRow[data-state="logged"] .input:hover { border-color: var(--ink-mute); }
 .setRow[data-state="logged"] .done { color: var(--ground); background: var(--ink); border-color: var(--ink); }
 
-/* Next: the marker on the whole row, the set number inverted, heavy borders. */
+/* Next: yellow highlighter on paper; warm dark-amber band with gold accent at night. */
 .setRow[data-state="next"] > *,
-.callout > * { background: var(--mark); color: var(--ink); }
-.setRow[data-state="next"] > * { border-top-color: var(--mark); }
-.setRow[data-state="next"] .setNo { background: var(--ink); color: var(--ground); font-weight: 800; }
+.callout > * { background: var(--mark-surface); color: var(--ink); }
+.setRow[data-state="next"] > * { border-top: 2px solid var(--mark-edge); }
+.setRow[data-state="next"] .setNo { background: var(--mark-accent); color: var(--on-mark-accent); font-weight: 800; }
 .setRow[data-state="next"] .prev { color: var(--ink); }
-.setRow[data-state="next"] .prev:hover:not(:disabled) { background: var(--mark); text-decoration: underline; }
-.setRow[data-state="next"] .input { border: 2px solid var(--ink); }
+.setRow[data-state="next"] .prev:hover:not(:disabled) { background: var(--mark-surface); text-decoration: underline; }
+.setRow[data-state="next"] .input { background: var(--surface); border: 2px solid var(--mark-accent); }
 .setRow[data-state="next"] .input[aria-invalid="true"] { border-style: dashed; }
 /* What a tap on done will log is the most important number on the screen: set it in ink. */
 .setRow[data-state="next"] .input::placeholder { color: var(--ink); font-weight: 800; }
 .setRow[data-state="next"] .rpe::placeholder { color: var(--ink-soft); font-weight: 400; }
-.setRow[data-state="next"] .done { border: 2px solid var(--ink); }
+.setRow[data-state="next"] .done { background: var(--surface); border: 2px solid var(--mark-accent); }
 
 .setRow, .callout { scroll-margin-bottom: 7rem; }
 .callout > * { padding: 0.15rem var(--gutter) 0.8rem; border-top: 0; }
@@ -275,13 +275,13 @@
   white-space: nowrap;
   color: var(--on-slab);
   background: var(--slab);
-  border: 2px solid var(--on-slab);
+  border: 2px solid var(--on-slab-soft);
   border-radius: 0;
 }
 .restBtn:disabled { color: var(--ink-mute); border-color: var(--ink-mute); }
-.restBtn:hover:not(:disabled) { background: var(--slab-line); }
-.restSkip { color: var(--slab); background: var(--on-slab); }
-.restSkip:hover:not(:disabled) { background: var(--on-slab-soft); }
+.restBtn:hover:not(:disabled) { background: var(--slab-line); border-color: var(--on-slab); }
+.restSkip { color: var(--slab); background: var(--on-slab); border-color: var(--on-slab); }
+.restSkip:hover:not(:disabled) { background: var(--on-slab-soft); border-color: var(--on-slab-soft); }
 .rest :focus-visible { outline-color: var(--on-slab); }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -303,7 +303,7 @@
   z-index: 1;
   margin: -1rem -1rem 0;
   padding: 1rem;
-  background: var(--ground);
+  background: var(--surface);
   border-bottom: 1px solid var(--rule);
 }
 .searchBox { position: relative; }
@@ -311,8 +311,8 @@
 .clear { position: absolute; top: 0; right: 0; }
 .createForm .trackingChoice { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
 .createForm .trackingChoice label + label span { border-left: 0; }
-.createForm .trackingChoice label:nth-child(even) span { border-left: 1px solid var(--ink); }
-.createForm .trackingChoice label:nth-child(n + 3) span { border-top: 1px solid var(--ink); }
+.createForm .trackingChoice label:nth-child(even) span { border-left: 1px solid var(--rule); }
+.createForm .trackingChoice label:nth-child(n + 3) span { border-top: 1px solid var(--rule); }
 .pickList li + li { border-top: 1px solid var(--hairline); }
 .pick {
   display: block;

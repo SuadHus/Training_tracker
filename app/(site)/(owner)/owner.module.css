@@ -147,8 +147,8 @@
 
 .tracking { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .sheetForm .tracking label + label span { border-left: 0; }
-.sheetForm .tracking label:nth-child(even) span { border-left: 1px solid var(--ink); }
-.sheetForm .tracking label:nth-child(n + 3) span { border-top: 1px solid var(--ink); }
+.sheetForm .tracking label:nth-child(even) span { border-left: 1px solid var(--rule); }
+.sheetForm .tracking label:nth-child(n + 3) span { border-top: 1px solid var(--rule); }
 
 .preview summary :global(.icon), .disconnect summary :global(.icon) { flex: none; }
 .preview[open] summary :global(.icon), .disconnect[open] summary :global(.icon) { transform: rotate(180deg); }
