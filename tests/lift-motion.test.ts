@@ -343,7 +343,7 @@ const MUTATIONS: Mutation[] = [
   },
   {
     name: "the close grip as wide as the bench grip", kinds: ["bench-close"], pairs: true,
-    tables: () => tweak(LIFT_TABLES.bench["bench-close"], { grip: 0.335, touch: 0.122 }),
+    tables: () => tweak(LIFT_TABLES.bench["bench-close"], { grip: 0.38, touch: 0.135, lead: 0.01 }),
   },
   {
     name: "lowering the deadlift as the exact reverse of the pull", kinds: ["deadlift-conventional", "deadlift-sumo"],
@@ -370,8 +370,8 @@ const MUTATIONS: Mutation[] = [
     tables: () => tweak(LIFT_TABLES.squatShared, { gap: 0.02 }),
   },
   {
-    name: "a bench lifter with the elbows glued to the ribs on the close grip", kinds: ["bench-close"],
-    tables: () => tweak(LIFT_TABLES.bench["bench-close"], { swivel: 1.95 }),
+    name: "a bench lifter with the elbows glued to the ribs on the close grip (16 cm ahead of the bar)", kinds: ["bench-close"],
+    tables: () => tweak(LIFT_TABLES.bench["bench-close"], { lead: 0.16 }),
   },
   {
     name: "a stiff-legged lockout (the knees locked at 180 degrees)", kinds: ["deadlift-conventional"],
@@ -388,7 +388,7 @@ const MUTATIONS: Mutation[] = [
   },
   {
     name: "the bar pressed a further 2 cm into the drawn chest", kinds: ["bench", "bench-close"],
-    tables: () => { const a = tweak(LIFT_TABLES.bench.bench, { sink: 0.0483 }), b = tweak(LIFT_TABLES.bench["bench-close"], { sink: 0.0436 }); return () => { a(); b(); }; },
+    tables: () => { const a = tweak(LIFT_TABLES.bench.bench, { sink: 0.023 }), b = tweak(LIFT_TABLES.bench["bench-close"], { sink: 0.023 }); return () => { a(); b(); }; },
   },
   {
     name: "a walkout with the feet kicked up 14 cm at every step", kinds: ["squat-low", "squat-high"],
@@ -438,16 +438,52 @@ const MUTATIONS: Mutation[] = [
     tables: () => tweak(LIFT_TABLES.squat["squat-low"], { stance: 0.21 }),
   },
   {
-    name: "bench forearms leaning in at the touch (the swivel turned by 0.12 rad)", kinds: ["bench"],
-    tables: () => { const t = LIFT_TABLES.bench.bench; return tweak(t, { swivel: t.swivel + 0.12 }); },
+    name: "bench forearms leaning back at the touch (the elbows 7 cm ahead of the bar)", kinds: ["bench"],
+    tables: () => tweak(LIFT_TABLES.bench.bench, { lead: 0.07 }),
   },
   {
-    name: "the bar rests on top of the drawn chest (settles 2.5 mm: 0.158 above the shoulders)", kinds: ["bench", "bench-close"],
-    tables: () => { const a = tweak(LIFT_TABLES.bench.bench, { sink: 0.0025 }), b = tweak(LIFT_TABLES.bench["bench-close"], { sink: 0.0025 }); return () => { a(); b(); }; },
+    name: "a flat lifter: the shoulders not set back onto the pad and the bar in the fingers (0.48 m of bar travel)", kinds: ["bench", "bench-close"],
+    tables: () => tweak(LIFT_TABLES.benchShared, { shoulderSet: 0, palm: 0.08 }),
   },
   {
-    name: "the close-grip arm pressed into the drawn ribs through the press (the elbows do not come out)", kinds: ["bench-close"],
-    tables: () => tweak(LIFT_TABLES.bench["bench-close"], { swivelUp: 0 }),
+    name: "the elbows follow the bar back toward the head at once: rotated all the way out long before lockout", kinds: ["bench", "bench-close"],
+    tables: () => tweak(LIFT_TABLES.benchShared, { elbowLag: 0 }),
+  },
+  {
+    name: "the elbows on one track down and up: they do not open as the bar is pressed back over the shoulders", kinds: ["bench", "bench-close"],
+    tables: () => tweak(LIFT_TABLES.benchShared, { elbowLag: 1 }),
+  },
+  {
+    name: "the elbows follow 60% of the bar's early return instead of half", kinds: ["bench", "bench-close"],
+    tables: () => tweak(LIFT_TABLES.benchShared, { elbowLag: 0.4 }),
+  },
+  {
+    name: "the bar's path bowed half as much, down and up", kinds: ["bench", "bench-close"],
+    tables: () => { const a = tweak(LIFT_TABLES.bench.bench, { bow: [0.17, 0.32] }), b = tweak(LIFT_TABLES.bench["bench-close"], { bow: [0.17, 0.32] }); return () => { a(); b(); }; },
+  },
+  {
+    name: "the rack hooks 3 cm too high for the lifter", kinds: ["bench", "bench-close"],
+    tables: () => tweak(LIFT_TABLES.benchShared, { hookY: 1.055 }),
+  },
+  {
+    name: "the rack hooks 3 cm too low for the lifter", kinds: ["bench", "bench-close"],
+    tables: () => tweak(LIFT_TABLES.benchShared, { hookY: 0.995 }),
+  },
+  {
+    name: "a novice's press: the bar straight up off the chest first, back over the shoulders last", kinds: ["bench", "bench-close"],
+    tables: () => { const a = tweak(LIFT_TABLES.bench.bench, { bow: [0.34, -0.6] }), b = tweak(LIFT_TABLES.bench["bench-close"], { bow: [0.34, -0.6] }); return () => { a(); b(); }; },
+  },
+  {
+    name: "the bar on one straight line down and up", kinds: ["bench", "bench-close"],
+    tables: () => { const a = tweak(LIFT_TABLES.bench.bench, { bow: [0, 0] }), b = tweak(LIFT_TABLES.bench["bench-close"], { bow: [0, 0] }); return () => { a(); b(); }; },
+  },
+  {
+    name: "the close grip's elbows flared like the bench's (under the bar at the chest)", kinds: ["bench-close"],
+    tables: () => tweak(LIFT_TABLES.bench["bench-close"], { lead: 0 }),
+  },
+  {
+    name: "the grips of the first drawing (hands 0.67 and 0.416 m apart)", kinds: ["bench", "bench-close"],
+    tables: () => { const a = tweak(LIFT_TABLES.bench.bench, { grip: 0.335 }), b = tweak(LIFT_TABLES.bench["bench-close"], { grip: 0.208 }); return () => { a(); b(); }; },
   },
   {
     name: "arms that never lock out on the bench (165 degrees)", kinds: ["bench", "bench-close"],
@@ -498,7 +534,7 @@ const MUTATIONS: Mutation[] = [
     tables: () => { const a = tweak(LIFT_TABLES.bench.bench, { downTail: 0.02 }), b = tweak(LIFT_TABLES.bench["bench-close"], { downTail: 0.02 }); return () => { a(); b(); }; },
   },
   {
-    name: "a bench press ascent that peaks above 0.8 m/s (the press 12% quicker)", kinds: ["bench", "bench-close"],
+    name: "a bench press ascent 12% quicker than its tempo (the peak speed leaves its band)", kinds: ["bench", "bench-close"],
     tables: () => { const a = tweak(LIFT_TABLES.bench.bench, { up: 0.93 }), b = tweak(LIFT_TABLES.bench["bench-close"], { up: 0.97 }); return () => { a(); b(); }; },
   },
   {

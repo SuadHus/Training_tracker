@@ -87,10 +87,13 @@ export const SQ = {
 export type BenchCfg = {
   /** Half the distance between the hands, touch point toward the feet from the shoulder line. */
   grip: number; touch: number;
-  /** The swivel of the elbow about the shoulder-wrist axis (rad, 0 = straight out from the body, positive toward the feet along the axis cross product), the same for the whole lift: a pole vector would point straight against the axis near lockout and the elbow would flip. */
-  swivel: number;
-  /** How much further the swivel turns (rad) as the bar leaves the chest: the elbows come out a little once the bar is up, over the first `swivelSpan` of the press, so that the arm clears the drawn ribs while the forearms are upright at the touch. */
-  swivelUp: number; swivelSpan: number;
+  /**
+   * How far toward the feet of the bar the elbows are at the chest, seen from the side (m). Above the chest the elbows are under the
+   * bar: this lead grows from nothing at lockout to its full size at the touch. What was measured at the chest is the moment arm of
+   * the bar's force about the elbow: 0.00 m with a wide grip, 0.03 m with a medium one, 0.08 m with a narrow one, its direction not
+   * given (docs/bench-press-elbows.md, [L21] Table 2). Reading it as the elbow ahead of the bar is a judgement.
+   */
+  lead: number;
   /** Rep tempo: descent, touch, press, lockout. */
   down: number; hold: number; up: number; lockout: number;
   /** How far the bar's surface sinks into the outline of the drawn chest (m), measured along the normal of the outline: the bar rests on the chest, a couple of millimetres in. */
@@ -101,22 +104,37 @@ export type BenchCfg = {
   upSpeed: ReadonlyArray<readonly [number, number]>;
   /** How the press slows into lockout: over this share of the move the speed falls to `upFloor` of its shape (the elbows turn a small change of height into a large change of angle near straight). */
   upTail: number; upFloor: number;
-  /** How far the bar has travelled toward its x as a function of the share of its height still to go: where the sweep starts and how wide it is (descent, ascent). Down and up differ: a J curve. */
-  xDown: readonly [number, number]; xUp: readonly [number, number];
+  /**
+   * How far the bar's path bows away from a straight line between lockout and the chest, down and up: at mid-height the bar is a
+   * quarter of this share of its sideways travel ahead of the line. Down it bows toward the feet (the bar drifts early), up toward
+   * the head (the bar comes back over the shoulders right off the chest and finishes nearly straight up), as skilled lifters do.
+   */
+  bow: readonly [number, number];
 };
 
 export const BENCH: Record<"bench" | "bench-close", BenchCfg> = {
-  bench: { grip: 0.335, touch: 0.13, swivel: 1.295, swivelUp: 0, swivelSpan: 0.3, down: 1.2188, hold: 0.0999, up: 1.0513, lockout: 0.3059, sink: 0.0283, downTail: 0.1276, upTail: 0.2013, upFloor: 0.1507, upSpeed: [[0, 0], [0.0989, 0.2187], [0.2498, 1.1072], [0.5282, 0.7615], [0.7795, 1.0338], [0.9297, 0.6596], [1, 0]], xDown: [0.12, 0.88], xUp: [0, 0.75] },
-  "bench-close": { grip: 0.208, touch: 0.185, swivel: 1.385, swivelUp: -0.25, swivelSpan: 0.3, down: 1.2347, hold: 0.1193, up: 1.099, lockout: 0.3324, sink: 0.0236, downTail: 0.1019, upTail: 0.21, upFloor: 0.1602, upSpeed: [[0, 0], [0.1173, 0.2389], [0.2845, 0.9692], [0.5276, 0.6337], [0.8202, 0.8535], [0.9333, 0.7213], [1, 0]], xDown: [0, 1], xUp: [0, 0.75] },
+  bench: { grip: 0.38, touch: 0.135, lead: 0.01, down: 1.2188, hold: 0.0999, up: 1.0513, lockout: 0.3059, sink: 0.003, downTail: 0.1276, upTail: 0.2013, upFloor: 0.1507, upSpeed: [[0, 0], [0.0989, 0.2187], [0.2498, 1.1072], [0.5282, 0.7615], [0.7795, 1.0338], [0.9297, 0.6596], [1, 0]], bow: [0.34, 0.64] },
+  "bench-close": { grip: 0.25, touch: 0.175, lead: 0.06, down: 1.2347, hold: 0.1193, up: 1.099, lockout: 0.3324, sink: 0.003, downTail: 0.1019, upTail: 0.21, upFloor: 0.1602, upSpeed: [[0, 0], [0.1173, 0.2389], [0.2845, 0.9692], [0.5276, 0.6337], [0.8202, 0.8535], [0.9333, 0.7213], [1, 0]], bow: [0.34, 0.64] },
 };
 
 export const PAD = 0.44;
 export const BN = {
-  /** Shoulder joints (the chest point) and pelvis in the sagittal plane; the waist falls out of the spine lengths. */
+  /** The chest point (the top of the spine, between the shoulders) and the pelvis in the sagittal plane; the waist falls out of the spine lengths. */
   S: [0, PAD + 0.1095] as const, P: [0.4925, PAD + 0.1045] as const,
+  /** How far below the chest point the shoulder joints lie (m): the shoulder blades are pulled together and pressed into the pad, which lifts the chest toward the bar. */
+  shoulderSet: 0.045,
+  /** Wrist to the centre of the bar (m): a pressing grip carries the bar on the heel of the palm, over the forearm, not in the fingers. */
+  palm: 0.055,
+  /**
+   * How far the elbows stay behind when the bar is not on the path it goes down by, as a share of the distance: on the way up the bar
+   * comes back toward the head early and the elbows open out only half as fast (they are not rotated all the way out before lockout).
+   * At the hooks the same rule leaves the elbows about 11 cm toward the feet of the bar, the forearms reaching back for it: that number
+   * is not chosen, it falls out of where the hooks are.
+   */
+  elbowLag: 0.5,
   headDist: 0.2, headY: PAD + BODY.headRadius + 0.005,
   feetZ: 0.29, toeOut: 12 * DEG, kneeZ: 0.3, ankleBehindKnee: 0.04,
-  hookX: -0.185, hookY: 1.09, rackHalf: 0.56,
+  hookX: -0.185, hookY: 1.025, rackHalf: 0.56,
   /** Where the hands come to rest after the bar is racked (the left hand mirrored), and where the elbows are pointed on the way there: the hands rest on the ribs beside the chest, the elbows hang down over the edge of the pad. */
   restHand: [0.3, 0.66, 0.22] as V, restVec: unit([0.3, 1, 0]) as V, restPole: [0.5, -1.5, 0.5] as V,
   armMax: 0.5792,

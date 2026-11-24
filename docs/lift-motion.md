@@ -26,9 +26,19 @@ number counts as one, infinity as thirty, a kind that is none of the six throws 
   the bar in both, in every frame the hands hold it. Hip crease 4 cm below the top of the knee at the bottom.
   heroTime: the bottom.
 - **Bench, regular and close grip.** under the bar 0.5, lift-off 1.1, settle 0.15, each rep 2.68 (close grip 2.79: descent 1.22, touch 0.1, press 1.05, lockout 0.31), rerack 1.1 and rack
-  0.4 (1.5 together), let go 1.4. 10.0 s for 2 reps, 27.4 s for 8. The body does not move (head, shoulders and pelvis within 5 mm, feet planted). The bar touches the drawn chest
-  (13 cm toward the feet from the shoulders for the bench, 18.5 for the close grip), forearms 3 to 5 degrees off vertical, hands 0.67 m apart against 0.42, elbow angle 40 degrees at the touch,
-  lockout at 171. The set ends with the hands resting on the ribs beside the chest (y 0.66, z 0.22) and the elbows hanging over the edge of the pad (z 0.28). heroTime: the touch.
+  0.4 (1.5 together), let go 1.4. 10.0 s for 2 reps, 27.4 s for 8. The body does not move (head, shoulders and pelvis within 5 mm, feet planted). The lifter is set up the way benchers set
+  up: the shoulder joints lie 4.5 cm below the chest point, pulled back onto the pad, and the bar lies on the heel of the palm, 5.5 cm above the wrist. The bar then travels 0.40 m (close
+  grip 0.43), which is what was measured on lifters (0.41 and 0.43). Hands 0.76 m apart (the grip trained lifters choose, 175% of the shoulder width between the forefingers) against 0.50
+  (105%, among the narrow grips that were studied). The bar rests on the drawn chest, 13.5 cm toward the feet from the shoulders (close grip 17.5) and 20 cm above the shoulder joints.
+  Lockout at 171 degrees.
+  *The elbows.* Seen from the side they stay under the bar: at most 2.6 cm toward the feet of it (close grip 7.3), so the forearm is within 6 degrees of upright (close grip 21). Seen
+  from above they point out to the sides at lockout (91 degrees from the line of the body), close steadily to 59 degrees at the chest (close grip 36) and open again on the way up,
+  never turning back. At the chest the upper arm is 53 degrees from the plane that halves the body (close grip 34), the elbow joints are 12 cm below the shoulder joints (10), the elbow
+  is bent to 57 degrees (47) and the forearms lean in 12 degrees seen from the front (26). *The bar's path.* Down along a line that drifts toward the feet early (59% of the sideways travel
+  done at half height); up toward the head from the first centimetres (61 degrees to the horizontal off the chest, 66% of the way back at half height). The elbows follow only half of
+  that early return, so that they are not rotated all the way out before lockout: half way up the flare is 77 degrees (65), 3 to 5 more than half way down.
+  What was measured on lifters, what coaches say and what is this model's own judgement is told apart, number by number, in `docs/bench-press-elbows.md`. The set ends with the hands
+  resting on the ribs beside the chest (y 0.66, z 0.22) and the elbows hanging over the edge of the pad (z 0.28). heroTime: the touch.
 - **Deadlift, conventional and sumo.** approach 3.1 (conventional) and 3.9 (sumo, in five steps that widen the stance, the last two 15% longer), grip 1.6 (hinge 1.35, slack 0.25), each rep
   3.55 (lead 0.1, pull 1.6, hold 0.3, lowering 1.2, floor 0.3), let go 2.0 (hands off, then the torso rises at an even pace, then the legs finish straight). 13.9 and 14.5 s for 2 reps. Conventional:
   heels 0.23 m apart, hands just outside the legs; sumo: 0.82 m, toe-out 44 degrees, hands inside the knees, torso upright, shorter bar travel. heroTime: the bar at the knees (0.27 m up), the back
@@ -40,13 +50,13 @@ The reference figures for each lift (timings, joint angles, bar speeds and paths
 `bench.ts`, `deadlift.ts` (each with the checks of its family: tempo, stillness of the feet, bar over the midfoot, the arms against the drawn trunk and thighs, acceleration and jerk, the
 recorded numbers that the reference figures cannot hold), `general.ts` (bone lengths, no NaN, joints bend the anatomical way, hands on the bar, feet planted, continuity at 240 Hz for 1, 2, 5 and 30
 reps: no joint moves more than 1 cm between two samples), `pairs.ts` (low bar against high bar, bench against close grip, conventional against sumo), `measure.ts` (the measurements, taken from 240 Hz samples).
-`tests/lift-motion.test.ts` runs them for every lift, and a table of 58 deliberate mutations (a knee bent backwards, a foot sliding, a jump at a boundary, low bar and high bar swapped, sumo hands
-outside the knees, a rushed rep, a brisk walk in, hands held in the air, ...), each of which must make the suite fail, with `LIFT_MUTATIONS=1` (six minutes; not in `npm test`; `MUTATION_REPORT=1` prints how many checks each mutation breaks). `LIFT_SWEEP=1` makes the drawing sweeps of `tests/lift-draw.test.ts` four times as dense.
+`tests/lift-motion.test.ts` runs them for every lift, and a table of 67 deliberate mutations (a knee bent backwards, a foot sliding, a jump at a boundary, low bar and high bar swapped, sumo hands
+outside the knees, a rushed rep, a brisk walk in, hands held in the air, a novice's press straight up off the chest, elbows thrown out before lockout, ...), each of which must make the suite fail, with `LIFT_MUTATIONS=1` (six minutes; not in `npm test`; `MUTATION_REPORT=1` prints how many checks each mutation breaks). `LIFT_SWEEP=1` makes the drawing sweeps of `tests/lift-draw.test.ts` four times as dense.
 
 Where a reference figure cannot be held, the check records what the model does and says so in its id ("recorded"): the squat's lean and shank at the top, the low bar's upper arm along the ribs, the
-bar behind the torso axis, the middle step of the walkout, the deadlift's bar to the hip-knee line, the sumo's shin and back angle, the close grip's flare and elbow angle.
+bar behind the torso axis, the middle step of the walkout, the deadlift's bar to the hip-knee line, the sumo's shin and back angle, the bench's forearms seen from the front.
 
-Headline numbers, two reps: squat peak bar speed 0.65 (low) and 0.66 m/s (high); bench 0.77 and 0.80; deadlift 0.72 and 0.66; planted feet move 0.00 cm in the reps (heel and toe at 0 mm);
+Headline numbers, two reps: squat peak bar speed 0.65 (low) and 0.66 m/s (high); bench 0.67 and 0.74; deadlift 0.72 and 0.66; planted feet move 0.00 cm in the reps (heel and toe at 0 mm);
 no joint moves more than 1 cm in 1/240 s anywhere; bar over the midfoot to 0.0 cm in every frame of every squat rep.
 
 ## What is still weak
@@ -56,6 +66,17 @@ no joint moves more than 1 cm in 1/240 s anywhere; bar over the midfoot to 0.0 c
   them by a centimetre), puts the pelvis there; a lean of 8 degrees puts it further ahead, not nearer. A bar 2 cm behind the midfoot at the top would gain about a degree of shank and
   make the knee jump (bar acceleration 94 m/s2), and straighter legs (reach 0.9994) turn a millimetre of hip height into a large swing of the knee (the knee's acceleration is 69 m/s2
   against the 25 allowed). A real lifter has thinner ribs, a bar closer to the spine, or a bar behind the midfoot.
+- **The bench's forearms lean in more than lifters' were measured to.** Averaged over a rep they lean in 8.5 degrees (bench) and 26 (close grip), and up to 23 and 45 in mid-rep; the
+  one study that measured it found means of about 1 (medium grip), 12.5 the other way (wide) and 8.5 to 16.5 (narrow), with a sign convention it does not state. The cause is the
+  mannequin's build. A two-bone arm whose hand is over its shoulder has its elbow 0.2 m off the line between the two at mid-height; the model puts that distance out to the side, where
+  lifters' elbows were seen half way up, not toward the feet, where the forearm would lean back under the bar instead. And the mannequin's chest is 20 cm above its shoulder joints: a
+  lifter with a big arch has more, bends the elbow less (the elbow here bends to 57 and 47 degrees at the chest; lifters' were measured at 55 to 68 and 51 by one method, 79 to 93 and
+  66 to 70 by another) and drops it less (12 and 10 cm below the shoulder joints here).
+- **The close grip's elbows are ahead of the bar** by 6 cm at the chest and 5 half way up (the forearm leans back 14 degrees at the chest, 21 at most). A coach wants them back under the
+  bar by the midrange; the one measurement there is has the bar's moment arm about the elbow at 8 cm with a narrow grip.
+- **The bench's elbows on the way down are a mirror of the way up.** Nobody has measured the flare during the descent.
+- **The bench's shoulder joints do not move** in the press. A lifter's shoulder blades slide a little near lockout.
+- **The bench's tempo is a working set's** (descent 1.06 s and press 0.94 s, each by 1 mm bands). World-class lifters lowering a maximum took 1.7 to 2.3 s.
 - **In the let go the forearms pass through level, out to the sides**, before the arms hang, and the high bar's forearm swings forward 0.16 m: an arm that drops from a bar has to turn over somewhere.
 - **The squat's sticking region and the bench's are shapes, not physics**: the model does not know the load.
 - **A 5-rep set and a 30-rep set have the same grind curve** (the square of the place in the set).

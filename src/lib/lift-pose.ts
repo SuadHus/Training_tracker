@@ -15,7 +15,7 @@ export type LiftPose = {
   pelvis: Vec3;
   /** Where the lower back meets the rib cage. On a model with a rigid torso: 44% of the way from pelvis to chest. */
   waist: Vec3;
-  /** Midpoint of the two shoulder joints. */
+  /** The top of the spine, between the shoulders: the midpoint of the two shoulder joints, except on the bench, where the joints are set back from it onto the pad. */
   chest: Vec3;
   /** Centre of the head, a ball of radius 0.105. */
   head: Vec3;

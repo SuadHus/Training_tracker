@@ -159,7 +159,7 @@ class Script {
 
 // ------------------------------------------------------------------------------------------------ the rig
 const SPINE = { lumbar: 0.22, thorax: 0.28 };
-/** Chest (middle of the shoulder joints) to the centre of the head, and half the distance between the hip joints. */
+/** Chest (the top of the spine: the middle of the shoulder joints, except on the bench, where they are set back from it) to the centre of the head, and half the distance between the hip joints. */
 const CHEST_TO_HEAD = BODY.neck;
 const HIPH = BODY.hipHalf;
 
@@ -189,24 +189,53 @@ function kneeAt(hip: V, ankle: V, kz: number): V {
 }
 
 /**
- * Two-bone solve for an arm. The elbow lies on a circle around the shoulder-wrist axis; `phi` is where on it, measured from
- * the direction pointing away from the body (+z for the right arm) toward the direction `axis x outward`. Blending phi
- * (rather than a pole vector) cannot flip the elbow when a pole passes through the axis.
+ * Two directions across an axis `u` that an arm bone lies along: `e1` points away from the body (+z for the right arm) and `e2` is
+ * `u x e1`: on a lifter whose arm points up, toward the feet for the right arm and toward the head for the left one.
  */
-function armAt(shoulder: V, target: V, phi: number, zs: number): { elbow: V; wrist: V } {
+function armFrame(u: V, zs: number): [V, V] {
+  const out: V = [0, 0, zs];
+  let e1 = sub(out, mul(u, dot(out, u)));
+  if (len(e1) < 1e-6) e1 = [0, 1, 0];
+  e1 = unit(e1);
+  return [e1, [u[1] * e1[2] - u[2] * e1[1], u[2] * e1[0] - u[0] * e1[2], u[0] * e1[1] - u[1] * e1[0]]];
+}
+
+/**
+ * The circle the elbow of an arm reaching for `target` can lie on, around the shoulder-wrist axis `u`: its centre is `a` along the
+ * axis, its radius `h`, and `e1`, `e2` are the frame of the axis.
+ */
+function elbowCircle(shoulder: V, target: V, zs: number): { u: V; reach: number; a: number; h: number; e1: V; e2: V } {
   const l1 = BODY.upperArm, l2 = BODY.forearm;
   const d = sub(target, shoulder), dist = len(d) || 1e-9;
   const reach = clamp(dist, Math.abs(l1 - l2) + 0.01, (l1 + l2) * 0.9996);
   const u = mul(d, 1 / dist);
   const a = (l1 * l1 - l2 * l2 + reach * reach) / (2 * reach);
   const h = Math.sqrt(Math.max(0, l1 * l1 - a * a));
-  const out: V = [0, 0, zs];
-  let e1 = sub(out, mul(u, dot(out, u)));
-  if (len(e1) < 1e-6) e1 = [0, 1, 0];
-  e1 = unit(e1);
-  const e2: V = [u[1] * e1[2] - u[2] * e1[1], u[2] * e1[0] - u[0] * e1[2], u[0] * e1[1] - u[1] * e1[0]];
+  const [e1, e2] = armFrame(u, zs);
+  return { u, reach, a, h, e1, e2 };
+}
+
+/**
+ * Two-bone solve for an arm. The elbow lies on a circle around the shoulder-wrist axis; `phi` is where on it, measured from
+ * the direction pointing away from the body (+z for the right arm) toward the direction `axis x outward`. Blending phi
+ * (rather than a pole vector) cannot flip the elbow when a pole passes through the axis.
+ */
+function armAt(shoulder: V, target: V, phi: number, zs: number): { elbow: V; wrist: V } {
+  const { u, reach, a, h, e1, e2 } = elbowCircle(shoulder, target, zs);
   const dir = add(mul(e1, Math.cos(phi)), mul(e2, Math.sin(phi)));
   return { elbow: add(add(shoulder, mul(u, a)), mul(dir, h)), wrist: add(shoulder, mul(u, reach)) };
+}
+
+/**
+ * The swivel that puts the elbow at `x` (where the lifter faces: toward the feet on a bench) on the outer side of the arm: of the two
+ * points of the elbow's circle at that x, the one farther from the body. An x the circle does not reach is brought to the nearest it
+ * does, softly, so that the elbow never turns a corner there.
+ */
+function swivelAtX(shoulder: V, target: V, x: number, zs: number): number {
+  const { u, a, h, e1, e2 } = elbowCircle(shoulder, target, zs);
+  const span = Math.hypot(e1[0], e2[0]) || 1e-9;
+  const t = smax(smin((x - shoulder[0] - u[0] * a) / (h * span || 1e-9), 0.99, 0.1), -0.99, 0.1);
+  return Math.atan2(e2[0], e1[0]) - Math.sign(e2[0] || zs) * Math.acos(t);
 }
 
 /** The swivel angle that puts the elbow of an arm reaching for `target` on the side `pole` points to. */
@@ -215,11 +244,7 @@ function swivelOf(shoulder: V, target: V, pole: V, zs: number): number {
   let p = sub(pole, mul(u, dot(pole, u)));
   if (len(p) < 1e-6) p = [0, 0, zs];
   p = unit(p);
-  const out: V = [0, 0, zs];
-  let e1 = sub(out, mul(u, dot(out, u)));
-  if (len(e1) < 1e-6) e1 = [0, 1, 0];
-  e1 = unit(e1);
-  const e2: V = [u[1] * e1[2] - u[2] * e1[1], u[2] * e1[0] - u[0] * e1[2], u[0] * e1[1] - u[1] * e1[0]];
+  const [e1, e2] = armFrame(u, zs);
   return Math.atan2(dot(p, e2), dot(p, e1));
 }
 const wrapPi = (a: number) => a - 2 * Math.PI * Math.round(a / (2 * Math.PI));
@@ -250,17 +275,11 @@ function armSwing(shoulder: V, zs: number, a: { wrist: V; pole: V }, b: { wrist:
   const elbowOf = (s: { wrist: V; pole: V }) => armAt(shoulder, s.wrist, swivelOf(shoulder, s.wrist, s.pole, zs), zs).elbow;
   const ea = elbowOf(a), eb = elbowOf(b);
   const ua = unit(sub(ea, shoulder)), ub = unit(sub(eb, shoulder));
-  const frame = (u: V): [V, V] => {
-    let e1 = sub([0, 0, zs], mul(u, dot([0, 0, zs], u)));
-    if (len(e1) < 1e-6) e1 = [0, 1, 0];
-    e1 = unit(e1);
-    return [e1, [u[1] * e1[2] - u[2] * e1[1], u[2] * e1[0] - u[0] * e1[2], u[0] * e1[1] - u[1] * e1[0]]];
-  };
-  const polar = (u: V, f: V) => { const [e1, e2] = frame(u); return { g: Math.acos(clamp(dot(u, f), -1, 1)), psi: Math.atan2(dot(f, e2), dot(f, e1)) }; };
+  const polar = (u: V, f: V) => { const [e1, e2] = armFrame(u, zs); return { g: Math.acos(clamp(dot(u, f), -1, 1)), psi: Math.atan2(dot(f, e2), dot(f, e1)) }; };
   const fa = polar(ua, unit(sub(a.wrist, ea))), fb = polar(ub, unit(sub(b.wrist, eb)));
   const um = unit(add(mix(ua, ub, wElbow), [-elbowBack * Math.sin(Math.PI * wElbow), 0, zs * elbowOut * Math.sin(Math.PI * wElbow)]));
   const elbow = add(shoulder, mul(um, BODY.upperArm));
-  const [e1, e2] = frame(um);
+  const [e1, e2] = armFrame(um, zs);
   const sw = w, psi = lerp(fa.psi, fb.psi, sw) * (1 - psiPull * Math.sin(Math.PI * sw)), g = lerp(fa.g, fb.g, sw);
   const f = add(mul(um, Math.cos(g)), add(mul(e1, Math.sin(g) * Math.cos(psi)), mul(e2, Math.sin(g) * Math.sin(psi))));
   const wrist = add(elbow, mul(f, BODY.forearm));
@@ -288,6 +307,10 @@ type RigInput = {
   phi: { R: number; L: number };
   bar: V;
   gripping: boolean;
+  /** How far below the chest point the shoulder joints lie (default: on it). */
+  shoulderDrop?: number;
+  /** Wrist to the centre of the hand (default: BODY.hand). */
+  palm?: number;
 };
 
 function rig(r: RigInput): LiftPose {
@@ -305,11 +328,11 @@ function rig(r: RigInput): LiftPose {
     const f = footPoints(r.feet[side]);
     ankle[side] = f.ankle; heel[side] = f.heel; toe[side] = f.toe;
     knee[side] = kneeAt(hip[side], f.ankle, r.kz[side]);
-    const sh: V = [chest[0], chest[1], P[2] + sgn(side) * BODY.shoulderHalf];
+    const sh: V = [chest[0], chest[1] - (r.shoulderDrop ?? 0), P[2] + sgn(side) * BODY.shoulderHalf];
     shoulder[side] = sh;
     const arm = armAt(sh, r.wrist[side], r.phi[side], sgn(side));
     elbow[side] = arm.elbow; wrist[side] = arm.wrist;
-    hand[side] = add(arm.wrist, mul(r.handVec[side], BODY.hand));
+    hand[side] = add(arm.wrist, mul(r.handVec[side], r.palm ?? BODY.hand));
   }
   return { pelvis: P, waist, chest, head, hip, knee, ankle, heel, toe, shoulder, elbow, wrist, hand, bar: r.bar, gripping: r.gripping };
 }
@@ -666,6 +689,8 @@ function heightAtDistance(circles: readonly Circle[], x: number, d: number): num
 
 type BenchCal = {
   cfg: BenchCfg;
+  /** Height of the shoulder joints: below the chest point, set back onto the pad. */
+  jy: number;
   M: [number, number]; a1: number; a2: number; ah: number; head: V;
   ankleX: number; xL: number; yMax: (x: number) => number;
   xT: number; yT: number; yHook: number;
@@ -697,21 +722,21 @@ function prepBench(kind: "bench" | "bench-close"): BenchCal {
   }
   const ankleX = (lo + hi) / 2;
   // the bar's reach: highest the bar may be at x with the arm just short of straight
-  const dz = cfg.grip - BODY.shoulderHalf;
+  const dz = cfg.grip - BODY.shoulderHalf, jy = sy - BN.shoulderSet;
   const yMax = (x: number) => {
-    const wx = x - BODY.hand * BN.handVec[0];
-    return sy + Math.sqrt(Math.max(0, BN.armMax ** 2 - (wx - sx) ** 2 - dz * dz)) + BODY.hand * BN.handVec[1];
+    const wx = x - BN.palm * BN.handVec[0];
+    return jy + Math.sqrt(Math.max(0, BN.armMax ** 2 - (wx - sx) ** 2 - dz * dz)) + BN.palm * BN.handVec[1];
   };
   const xL = BN.hookX + 0.18;
   // the chest as the drawing makes it (lift-draw.ts: waist, ribs pushed 0.01 toward the front, shoulder and chest balls): where the bar rests
   const dirUp = unit([sx - M[0], sy - M[1], 0]);
   const front: V = unit([sy - py, px - sx, 0]); // the way the chest faces (up, on a bench): the spine crossed with the shoulder line
   const ribs: V = [lerp(M[0], sx, 0.55) + front[0] * 0.01, lerp(M[1], sy, 0.55) + front[1] * 0.01, 0];
-  const circles: Circle[] = [[M[0], M[1], 0.08], [ribs[0], ribs[1], 0.118], [sx, sy, 0.072], [sx + dirUp[0] * 0.05, sy + dirUp[1] * 0.05, 0.074]];
+  const circles: Circle[] = [[M[0], M[1], 0.08], [ribs[0], ribs[1], 0.118], [sx, jy, 0.072], [sx, sy, 0.072], [sx + dirUp[0] * 0.05, sy + dirUp[1] * 0.05, 0.074]];
   const xT = sx + cfg.touch;
   const yT = heightAtDistance(circles, xT, BAR.shaftRadius - cfg.sink);
   return {
-    cfg, M, a1, a2, ah, head, ankleX, xL, yMax, xT, yT, yHook: BN.hookY,
+    cfg, jy, M, a1, a2, ah, head, ankleX, xL, yMax, xT, yT, yHook: BN.hookY,
     downE: profile((u) => Math.pow(Math.sin(Math.PI * u), 0.8) * smooth(u / 0.14) * smooth((1 - u) / cfg.downTail)),
     upE: (g) => { const sh = shaped(stickier(cfg.upSpeed, 0.53, g)); return profile((u) => sh(u) * (cfg.upFloor + (1 - cfg.upFloor) * smooth((1 - u) / cfg.upTail))); },
   };
@@ -722,9 +747,10 @@ function planBench(kind: "bench" | "bench-close", reps: number): Plan {
   const names = ["bx", "by", "arm"];
   const yL = cal.yMax(cal.xL) - BN.lockMargin;
   const S = new Script(names, { bx: BN.hookX, by: BN.hookY });
-  // x travels a fraction of the way as a function of how far the bar is above the chest: a J curve, down and up differ
-  const fracDown = (q: number) => smooth((q - cfg.xDown[0]) / cfg.xDown[1]);
-  const fracUp = (q: number) => smooth((q - cfg.xUp[0]) / cfg.xUp[1]);
+  // x travels a share of the way as a function of the share q of the height below lockout. Down it runs ahead of the height (the bar
+  // drifts toward the feet early), up it comes back ahead of the height (toward the head right off the chest): the two paths differ.
+  const fracDown = (q: number) => q + cfg.bow[0] * q * (1 - q);
+  const fracUp = (q: number) => q - cfg.bow[1] * q * (1 - q);
   S.seg("under the bar");
   S.phase("setup", 0.5);
   S.seg("lift-off");
@@ -775,13 +801,17 @@ function planBench(kind: "bench" | "bench-close", reps: number): Plan {
     for (const side of SIDES) {
       const z = sgn(side);
       const hand: V = [x, y, z * cfg.grip];
-      const wristBar = sub(hand, mul(BN.handVec, BODY.hand));
+      const wristBar = sub(hand, mul(BN.handVec, BN.palm));
       const restHand: V = [BN.restHand[0], BN.restHand[1], z * BN.restHand[2]];
       const restVec: V = BN.restVec;
-      const wristRest = sub(restHand, mul(restVec, BODY.hand));
-      const sh: V = [BN.S[0], BN.S[1], z * BODY.shoulderHalf];
+      const wristRest = sub(restHand, mul(restVec, BN.palm));
+      const sh: V = [BN.S[0], cal.jy, z * BODY.shoulderHalf];
       const pb = swivelOf(sh, wristRest, [BN.restPole[0], BN.restPole[1], z * BN.restPole[2]], z);
-      const phiBar = z * (cfg.swivel + cfg.swivelUp * smooth((y - cal.yT) / ((yL - cal.yT) * cfg.swivelSpan))); // mirrored: the swivel is measured from the outward side, with a handedness that flips between the arms
+      // The elbows stay under the bar seen from the side, out to the sides of it, and come a little toward the feet as the bar nears the
+      // chest. On the way up the bar comes back toward the head ahead of the path it went down by: the elbows follow only part of that.
+      const q = clamp((yL - y) / (yL - cal.yT));
+      const xDown = cal.xL + (cal.xT - cal.xL) * fracDown(q);
+      const phiBar = swivelAtX(sh, wristBar, wristBar[0] + cfg.lead * smooth(q) + BN.elbowLag * (xDown - x), z);
       const ab = { wrist: mix(wristBar, wristRest, arm), phi: phiBar + wrapPi(pb - phiBar) * arm };
       wrist[side] = ab.wrist; phi[side] = ab.phi;
       if (arm > 0) handVec[side] = turn(BN.handVec, restVec, arm);
@@ -789,6 +819,7 @@ function planBench(kind: "bench" | "bench-close", reps: number): Plan {
     return rig({
       pelvis, a1: cal.a1, a2: cal.a2, ah: cal.ah, neck: BN.headDist, feet,
       kz: { R: BN.kneeZ, L: -BN.kneeZ }, wrist, handVec, phi, bar: [x, y, 0], gripping: arm === 0,
+      shoulderDrop: BN.S[1] - cal.jy, palm: BN.palm,
     });
   };
   return {

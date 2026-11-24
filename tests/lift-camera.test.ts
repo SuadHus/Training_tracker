@@ -7,7 +7,7 @@ import { computePlans, stageFor } from "../src/lib/lift-plan";
 import { PLANS } from "../src/lib/lift-plans";
 import { basis, CAMERAS, dot3, MAX_HEIGHT, STRIP_HEIGHT, type StageSize, type ViewPlan } from "../src/lib/lift-camera";
 import { repSegments, samplePoses } from "../src/lib/lift-set";
-import { LIFT_KINDS } from "../src/lib/lifts";
+import { LIFT_KINDS, liftFamily } from "../src/lib/lifts";
 import { platesPerSide } from "../src/lib/workout-doc";
 
 const SIZES: StageSize[] = ["wide", "narrow"];
@@ -137,7 +137,10 @@ test("the main view is left-aligned with the text column and trimmed: what a set
       assert.ok(x0 >= 0 && x0 <= 12, `${kind} ${size}: the drawing starts at x=${x0.toFixed(1)}`);
       assert.ok(x1 <= stage.views[0].panel[2] + 1e-6, `${kind} ${size}: the drawing ends at x=${x1.toFixed(1)}`);
       assert.ok(y0 >= 0 && y1 <= stage.views[0].panel[3] + 1e-6, `${kind} ${size}: extent ${y0.toFixed(1)}..${y1.toFixed(1)}`);
-      assert.ok(y0 <= (size === "wide" ? 90 : 70), `${kind} ${size}: ${y0.toFixed(0)} px of air above the drawing`);
+      // The bench is the low lift: its bar at lockout is 1.11 m up (the shoulders are set back on the pad and the hands are 0.76 m apart), so it
+      // alone leaves a quarter of the stage empty above it. The standing lifts fill theirs.
+      const bench = liftFamily(kind) === "bench";
+      assert.ok(y0 <= (size === "wide" ? (bench ? 100 : 30) : (bench ? 80 : 25)), `${kind} ${size}: ${y0.toFixed(0)} px of air above the drawing`);
       highest = Math.min(highest, y0);
     }
     assert.ok(highest <= 8, `${size}: the tallest lift has ${highest.toFixed(1)} px of air`);
