@@ -107,6 +107,7 @@
 .sheetForm { display: grid; gap: 1rem; }
 .sheetForm legend { display: block; margin-bottom: 0.3rem; font-size: var(--text-s); font-weight: 700; padding: 0; }
 .confirmText { flex: 1 1 100%; font-weight: 500; }
+.fieldHint { margin-top: 0.3rem; }
 
 /* Publishing ----------------------------------------------------------------- */
 

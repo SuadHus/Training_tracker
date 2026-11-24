@@ -1,9 +1,12 @@
 import { Fragment } from "react";
 import Link from "next/link";
 import { BarLoad, perSide } from "@/app/ui/bar-load";
+import { LiftStage } from "@/app/ui/lift-stage";
 import { Notation, Num } from "@/app/ui/notation";
 import { WeekDots } from "@/app/ui/week-strip";
 import { dayLabel, dayShort, weekAnchor, weekLabel, weekName, weekRange } from "@/src/lib/day-format";
+import type { MainLift } from "@/src/lib/lift-row";
+import { topLifts } from "@/src/lib/lifts";
 import { formatSpan, formatTotal, platesPerSide, STANDARD_BAR_KG } from "@/src/lib/workout-doc";
 import type { PlannedSessionSummary, SessionBlock, SessionSummary, WeekSummary } from "@/src/lib/public-data";
 import { plural } from "./format";
@@ -97,16 +100,45 @@ export function HeaviestBar({ week }: { week: WeekSummary }) {
   );
 }
 
+const mainLiftsOf = (week: WeekSummary) => topLifts<SessionBlock, SessionSummary>(week.sessions);
+
+/**
+ * The top of a week on the home page: the lifter doing each main lift of the week with the real load and reps, or, when the week has
+ * none of the six, the heaviest bar as plates.
+ */
+export function MainLifts({ week }: { week: WeekSummary }) {
+  const tops = mainLiftsOf(week);
+  if (tops.length === 0) return <HeaviestBar week={week} />;
+  const lifts: MainLift[] = tops.map(({ kind, session, block, load, reps }) => ({
+    kind, exercise: block.exercise.name, loadKg: load, barKg: block.exercise.barKg ?? STANDARD_BAR_KG, reps, rpe: block.top?.rpe ?? null,
+    day: dayLabel(session.day),
+  }));
+  return (
+    <div className="row row--stack">
+      <div className="row-margin">{lifts.length > 1 ? "Main lifts" : "Main lift"}</div>
+      <LiftStage lifts={lifts} />
+    </div>
+  );
+}
+
+/** The blocks that `MainLifts` shows above a week's sessions: every main lift, or the heaviest bar. */
+function shownAbove(week: WeekSummary): ReadonlySet<SessionBlock> {
+  const lifts = mainLiftsOf(week);
+  if (lifts.length > 0) return new Set(lifts.map((lift) => lift.block));
+  const heaviest = heaviestSet(week);
+  return new Set(heaviest ? [heaviest.block] : []);
+}
+
 export function SessionRow({
   session, today, highlightToday, drawn,
 }: {
   session: SessionSummary;
   today?: string;
   highlightToday?: boolean;
-  drawn?: SessionBlock;
+  drawn?: ReadonlySet<SessionBlock>;
 }) {
-  // The bar already drawn large above the list is not drawn again beside its session.
-  const lead = session.blocks.filter((block) => block !== drawn).find(drawable);
+  // A bar already drawn large above the list is not drawn again beside its session.
+  const lead = session.blocks.filter((block) => !drawn?.has(block)).find(drawable);
   const lines = session.blocks
     .map((block) => ({ block, runs: block.runs.filter((run) => hasValue(run.measures)) }))
     .filter(({ runs }) => runs.length > 0);
@@ -205,7 +237,7 @@ export function WeekSessions({
   today?: string;
   underHero?: boolean;
 }) {
-  const drawn = week && underHero ? heaviestSet(week)?.block : undefined;
+  const drawn = week && underHero ? shownAbove(week) : undefined;
   const items = [
     ...(week?.sessions.map((session, index) => ({ kind: "completed" as const, day: session.day, rank: 0, index, session })) ?? []),
     ...planned.map((session, index) => ({ kind: "planned" as const, day: session.day, rank: 1, index, session })),

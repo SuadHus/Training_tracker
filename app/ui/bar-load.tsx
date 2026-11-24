@@ -1,3 +1,4 @@
+import { PLATE_SHAPE } from "@/src/lib/plate-look";
 import { formatNumber, platesPerSide, STANDARD_BAR_KG } from "@/src/lib/workout-doc";
 
 // A barbell load drawn as the plates on the bar, in the calibrated colours:
@@ -6,16 +7,6 @@ import { formatNumber, platesPerSide, STANDARD_BAR_KG } from "@/src/lib/workout-
 // without colour. The bar keeps one length per size, so stacked rows compare.
 
 type Size = "inline" | "row" | "tool" | "hero" | "hero-tight";
-
-const plateShape: Record<number, { width: number; height: number; className: string }> = {
-  25: { width: 6, height: 30, className: "p-25" },
-  20: { width: 5, height: 30, className: "p-20" },
-  15: { width: 4.5, height: 26, className: "p-15" },
-  10: { width: 4, height: 21, className: "p-10" },
-  5: { width: 3, height: 15, className: "p-5" },
-  2.5: { width: 2.5, height: 12, className: "p-2-5" },
-  1.25: { width: 2, height: 10, className: "p-1-25" },
-};
 
 const height = 32;
 const middle = height / 2;
@@ -41,7 +32,7 @@ export function BarLoad({ load, barKg, size = "row", className }: {
   const plates = platesPerSide(load, bar);
   if (!plates) return null;
 
-  const stack = plates.reduce((total, plate) => total + plateShape[plate].width + gap, 0);
+  const stack = plates.reduce((total, plate) => total + PLATE_SHAPE[plate].width + gap, 0);
   const sleeve = Math.max(sleeveLength[size], stack + 9);
   const shaft = shaftLength[size];
   const width = shaft + 2 * sleeve;
@@ -51,7 +42,7 @@ export function BarLoad({ load, barKg, size = "row", className }: {
   const shapes: Array<{ key: string; x: number; width: number; height: number; className: string }> = [];
   let offset = 2.5 + gap;
   plates.forEach((plate, index) => {
-    const shape = plateShape[plate];
+    const shape = PLATE_SHAPE[plate];
     shapes.push({ key: `r${index}`, x: right + offset, ...shape });
     shapes.push({ key: `l${index}`, x: left - offset - shape.width, ...shape });
     offset += shape.width + gap;

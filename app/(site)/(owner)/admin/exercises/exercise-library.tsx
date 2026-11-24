@@ -10,6 +10,7 @@ import { Notation } from "@/app/ui/notation";
 import { Sheet } from "@/app/ui/sheet";
 import { SubmitButton } from "@/app/ui/submit-button";
 import { dateLabel } from "@/src/lib/day-format";
+import { liftKind, liftNames } from "@/src/lib/lifts";
 import {
   EQUIPMENT, TRACKINGS, USUAL_MUSCLES, equipmentLabels, exerciseMatches, exerciseMeta, trackingLabels, stockholmDay,
   type Equipment, type Tracking,
@@ -104,11 +105,15 @@ export function ExerciseLibrary({ exercises }: { exercises: ExerciseUsage[] }) {
 function ExerciseSheet({ exercise, open, onClose }: { exercise: ExerciseUsage | null; open: boolean; onClose: () => void }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  const [name, setName] = useState(exercise?.name ?? "");
   const [equipment, setEquipment] = useState<Equipment>(exercise?.equipment ?? "barbell");
   const [tracking, setTracking] = useState<Tracking>(exercise?.tracking ?? "weight_reps");
   const [message, setMessage] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const formId = useId();
+
+  // The home page draws six lifts in motion and knows them by name; say so while the name is typed.
+  const drawn = liftKind({ name, equipment });
 
   const done = () => { onClose(); router.refresh(); };
 
@@ -187,7 +192,11 @@ function ExerciseSheet({ exercise, open, onClose }: { exercise: ExerciseUsage | 
         {message && <p className="notice notice--alert" role="alert">{message}</p>}
         <div>
           <label className="label" htmlFor={`${formId}-name`}>Name</label>
-          <input id={`${formId}-name`} className="field" name="name" defaultValue={exercise?.name} maxLength={100} required autoComplete="off" />
+          <input
+            id={`${formId}-name`} className="field" name="name" defaultValue={exercise?.name} maxLength={100} required autoComplete="off"
+            aria-describedby={drawn ? `${formId}-drawn` : undefined} onChange={(event) => setName(event.target.value)}
+          />
+          {drawn && <p id={`${formId}-drawn`} className={`hint ${styles.fieldHint}`}>The home page draws this in motion as a {liftNames[drawn].toLowerCase()}.</p>}
         </div>
         <fieldset>
           <legend>A set records</legend>

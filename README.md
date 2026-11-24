@@ -32,6 +32,22 @@ A workout is an ordered list of exercises, and each exercise holds its sets. Tem
 - **Import from a spreadsheet** (under Templates) turns rows copied from Excel or Sheets into templates: one exercise per row with sets, reps and a load, an RPE or a remark. Workouts side by side and weeks stacked under each other become separate templates, and exercises the library does not know are added. A remark on a row becomes a note on the exercise, and notes are published with a session once it is finished.
 - **Extra set fields** add something to record on a set, such as bar speed, for every exercise or for one.
 
+## The animated main lifts
+
+The top of the home page shows the week's main lifts as a figure lifting the real bar, with the heaviest working set of each lift this week, its plates and its reps. A week with none of them shows the heaviest bar as plates, and the other pages keep the plates.
+
+An exercise is drawn as one of six lifts by its name, and only if it is a barbell exercise. The rule is strict (`liftKind` in `src/lib/lifts.ts`): the name must be one of these lifts and say nothing else that changes the movement. The exercise editor shows which lift a name will be drawn as.
+
+- **Low bar squat**: "Low bar squat", "Low-bar squat", "LBBS", "Squat (low bar)". **High bar squat**: "High bar squat", "HBBS". A plain "Squat" or "Back squat" is drawn as a high bar squat.
+- **Bench press**: "Bench press", "Bench". **Close grip bench press**: "Close grip bench press", "CGBP", "Close-grip bench".
+- **Conventional deadlift**: "Conventional deadlift". **Sumo deadlift**: "Sumo deadlift". A plain "Deadlift" is drawn as a conventional deadlift.
+- Words that do not change the picture are let through: "Paused squat", "Low bar squat 3ct", "Bench press (touch and go)".
+- Not drawn: "Front squat", "Incline bench press", "Romanian deadlift", "Trap bar deadlift", "Deficit deadlift", a name that asks for two lifts at once ("Squat / bench"), and any exercise that is not loaded with a barbell.
+
+A set is drawn only when its load can be made from plates and it has between one and 30 reps. The lifter's movement is a model that is the same for every load; the load, the reps and the plates are the logged ones.
+
+The stage of each lift (where it is drawn, at what size) is planned ahead of time and stored in `src/lib/lift-plans.ts`. After changing the motion tables or the cameras, run `npm run lift:plans` to write it again; a test fails until you do. How the motion is made is in `docs/lift-motion.md`.
+
 ## Training blocks
 
 A block (**Blocks**) is a named run of training weeks. Its sessions are ordinary planned sessions, so they turn up on the desk on their days and are logged like any other.
@@ -75,7 +91,7 @@ Open **Connections** on the desk to authorize each provider and run the first sy
 
 The schema is in `db/schema.sql`. It runs on every release and is safe to repeat: the first part creates the original tables, the second brings any database to the current shape, and one-time data moves are recorded in `schema_migrations`.
 
-Run `npm test`, `npm run typecheck`, and `npm run build` to verify changes. The database tests are skipped unless `TEST_DATABASE_URL` points at a PostgreSQL database they may create schemas in:
+Run `npm test`, `npm run typecheck`, and `npm run build` to verify changes. `npm test` includes the motion model of the lifter (about 20 seconds); `LIFT_MUTATIONS=1 npm test` adds a table of deliberate breakages that each must fail the suite (six minutes), and `LIFT_SWEEP=1` makes the drawing sweeps denser. The database tests are skipped unless `TEST_DATABASE_URL` points at a PostgreSQL database they may create schemas in:
 
 ```sh
 TEST_DATABASE_URL=postgres://training:training-local@127.0.0.1:55481/training npm test

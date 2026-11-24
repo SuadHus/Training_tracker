@@ -113,7 +113,9 @@ The site is set like Swedish public-information print: a timetable or a sports r
 
 Weeks are the wayfinding. They are ISO weeks, named the Swedish way ("v. 47"), and every list is grouped by them.
 
-Everything lives in `app/globals.css` (tokens, base elements, shared classes) and `app/ui/` (the plate drawing, set notation, weekday strip, icons, sheet). Page layout sits in a CSS module next to each area.
+On the home page the loud element is the lifter: when the week holds one of the six main lifts, the top of the week is that lift drawn in motion with the real load and reps, and nothing else on the page moves. A week without one of them opens with the heaviest bar as plates, as the other pages draw it.
+
+Everything lives in `app/globals.css` (tokens, base elements, shared classes) and `app/ui/` (the plate drawing, the lifter, set notation, weekday strip, icons, sheet). Page layout sits in a CSS module next to each area.
 
 ## Colors
 
@@ -123,7 +125,7 @@ Ink on ground does all the work. `ink-soft` is for secondary text and `ink-mute`
 
 ### Primary
 
-The plate colours are the only saturated colour on the site, and they always mean kilograms: 25 red, 20 blue, 15 yellow, 10 green, 5 white with an ink outline, 2.5 black, 1.25 steel. They appear only inside the loaded-bar drawing.
+The plate colours are the only saturated colour on the site, and they always mean kilograms: 25 red, 20 blue, 15 yellow, 10 green, 5 white with an ink outline, 2.5 black, 1.25 steel. They appear only on plates: in the loaded-bar drawing and on the bar the lifter holds.
 
 ### Secondary
 
@@ -174,7 +176,7 @@ The session screen is a single 40rem column with its own top bar and no site mas
 
 ## Elevation & Depth
 
-Flat. There are no shadows and no layers except the modal sheet, which sits on a dimmed backdrop under a 4px ink rule, and the rest timer, a `slab` fixed to the bottom of the session screen.
+Flat. There are no shadows and no layers (the lifter is flat too: one tone per part, a halo of ground colour round it, no shading) except the modal sheet, which sits on a dimmed backdrop under a 4px ink rule, and the rest timer, a `slab` fixed to the bottom of the session screen.
 
 ## Shapes
 
@@ -197,6 +199,18 @@ The masthead is a 4px ink rule, the name, and three links (This week, All weeks,
 ### The loaded bar
 
 `<BarLoad load barKg size>` draws a barbell load as plates on the bar: hard-edged blocks whose height and thickness step down with the weight, mirrored on both sleeves. Sizes: `inline` beside a table row, `row` beside a session, `tool` in the logger's call-out, `hero` across the content column. It is drawn only for barbell exercises whose load can be made from plates.
+
+### The lifter
+
+`<LiftStage lifts>` draws the week's main lifts as a jointed figure lifting the real bar: low bar squat, high bar squat, bench press, close grip bench press, conventional deadlift and sumo deadlift. It shows the heaviest working set of each lift this week, heaviest first, with the load, the reps and the plates of that set. A set that cannot be drawn truthfully (a load the plates cannot make, no reps) is left out, and so is an exercise whose name might be another lift; the wrong movement on a public page is worse than a still bar. The row sits under the margin label "Main lifts" ("Main lift" for one).
+
+- **Tones.** Flat shapes in tokens only. Near limbs `ink`, far limbs `ink-mute`, the head `ink-soft`, the torso `hairline`, the quietest: the order is the same in both themes, so an arm in front of the torso still reads at night. Rack and bench are single hairline outlines, the floor one rule. The plates are the site's plates in the site's colours and are the only colour on the page.
+- **Two views.** The main view is a three-quarter view (from the side and front for the squat and deadlift, from the head end for the bench); beside it, or under it on a phone, the front elevation with the word "Front" under its floor rule. On a desk both views share one scale and one floor rule; on a phone the main view takes the column and the front view is a strip under a hairline. The stylesheet picks the size with a container query, so the row has its real height before any script runs. All six lifts share one stage size, so nothing moves when the lift changes.
+- **Plates.** Round, with hubs and collars, in the colours and the order of the loaded bar. The thickness is exaggerated so that colours read and a stack can be counted; a stack too long for the sleeve is squeezed, and a plate too thin to outline loses its outline.
+- **Controls.** Tabs only when the week has more than one lift: text buttons set like the navigation and the theme switch, the chosen one bold and underlined. Under the drawing, a `btn--plain` button that says what a press does (Play, Pause, Replay) and a small counter, "Rep 3 of 5" with the phase in words and a square for each rep, solid when done. The caption reads as a set reads everywhere: the exercise, the load and reps in notation with the RPE raised, the day, and the plates per side.
+- **Behaviour.** The set starts at the rack (a deadlift: the lifter walks up to the bar) and plays once when it scrolls into view, then rests on its most telling still with the button reading Replay. It stops while it is off screen or the tab is hidden and goes on when it is back. A tab the reader chooses plays at once.
+- **Reduced motion.** With `prefers-reduced-motion: reduce` nothing moves by itself: the drawing shows the still, a chosen tab shows its still, and Play plays the set when it is pressed.
+- **Reading it without seeing it.** The drawing is an image with a sentence that names the lift, the load, the reps, the plates and how the lift starts; the rep counter is hidden from screen readers, since the caption says it all.
 
 ### Set notation
 
@@ -224,7 +238,8 @@ Set number, last time, inputs, done button. Every control is named with its exer
 
 - Write numbers as lifters write them and let them stack in columns.
 - Put context in the margin column: the week, the date, the exercise number.
-- Leave a section out when it has nothing to show. One session, or none, is a normal state.
+- Leave a section out when it has nothing to show. One session, or none, is a normal state: one main lift has no tabs, and none leaves the static bar.
+- Draw the lifter only from a set that was logged, with its real load and reps.
 - Name a button by what it does, and keep that name everywhere.
 
 ### Don't:
@@ -234,4 +249,5 @@ Set number, last time, inputs, done button. Every control is named with its exer
 - Don't box things into cards, round a corner, add a shadow or a gradient.
 - Don't put a small label above a heading, track out capitals, or use a monospace face.
 - Don't append arrows or other glyphs to links and buttons; icons come from `app/ui/icons.tsx` only.
+- Don't move anything but the lifter, and don't start it where it cannot be seen: it plays when on screen and stops when not.
 - Don't use a stat tile (a big number over a small label), a progress ring or a decorative chart.

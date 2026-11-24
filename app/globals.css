@@ -355,6 +355,63 @@ main.page { flex: 1 0 auto; padding-bottom: 4rem; }
 .per-side { font-size: var(--text-s); color: var(--ink-soft); }
 .per-side b { font-weight: 800; color: var(--ink); }
 
+/* The lifter. The week's main lifts, drawn in motion with the real load: flat shapes in the site's tokens, and the plates are the only colour. */
+
+.lf { display: block; width: 100%; height: auto; overflow: hidden; font-family: inherit; }
+.lf-floor { fill: none; stroke: var(--ink-mute); stroke-width: 0.75px; vector-effect: non-scaling-stroke; }
+.lf-frame, .lf-pad { fill: none; stroke: var(--ink-mute); stroke-width: 1px; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.lf-divider { fill: none; stroke: var(--hairline); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+/* Every part has a ground-coloured halo, so a limb in front of another reads as a limb. */
+.lf-body { stroke: var(--ground); stroke-width: 3px; paint-order: stroke; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+/* Near limbs in ink, far limbs and the head quieter, the torso quietest: the same order in both themes. */
+.lf-ink { fill: var(--ink); }
+.lf-torso { fill: var(--hairline); }
+.lf-far { fill: var(--ink-mute); }
+.lf-head { fill: var(--ink-soft); }
+.lf-plate:not(.p-5):not(.p-2-5):not(.lf-thin) { stroke: var(--ground); stroke-width: 1px; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.lf-face { fill: none; stroke: var(--ground); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.lf .bar-steel { stroke: var(--ground); stroke-width: 0.5px; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.lf-label { fill: var(--ink-mute); font-size: var(--text-xs); font-weight: 400; stroke: var(--ground); stroke-width: 3px; paint-order: stroke; }
+
+/* The row around it: tabs, caption, drawing, controls. The tabs are set like the navigation and the theme switch. */
+.lift { min-width: 0; }
+/* The padding is room for the 3px focus ring. */
+.lift-tabs { display: flex; flex-wrap: wrap; gap: 0 1.25rem; margin: calc(-0.35rem - 5px) -5px 0; padding: 5px; }
+.lift-tabs button { min-height: var(--tap); padding: 0 0.1rem; background: none; border: 0; border-radius: 0; color: var(--ink-soft); font-weight: 500; font-size: var(--text-s); }
+.lift-tabs button:hover { color: var(--ink); text-decoration: underline; }
+.lift-tabs button[aria-pressed="true"] { color: var(--ink); font-weight: 800; text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 0.3em; }
+.lift-tab-short { display: none; }
+@media (max-width: 32.5em) {
+  .lift-tabs { gap: 0 1rem; }
+  .lift-tabs button { white-space: nowrap; }
+  .lift-tab-full { display: none; }
+  .lift-tab-short { display: inline; }
+}
+/* Room for two lines of caption, three on a phone, the same for every set, so that nothing moves when the lift changes. */
+.lift-caption { margin-bottom: 0.5rem; line-height: 1.35; min-height: 2.7em; }
+@media (max-width: 32.5em) { .lift-caption { min-height: 4.05em; } }
+
+/* Both sizes of the drawing are in the page, because the server cannot know the width; the figure's own width picks one,
+   with no script, so the row has its real size from the first paint. */
+.lift-figure { width: 100%; container-type: inline-size; }
+.lf-wide { display: none; }
+.lf-narrow { max-width: 430px; }
+@container (min-width: 520px) {
+  .lf-wide { display: block; }
+  .lf-narrow { display: none; }
+}
+
+/* The controls: one row of fixed height, the button beside two small lines (the rep and the phase, then the squares). */
+.lift-foot { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 0 1.25rem; margin-top: 0.5rem; }
+.lift-play { min-width: 6.25rem; }
+.lift-count { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 0.2rem 0.9rem; font-size: var(--text-s); }
+.lift-rep, .lift-phase { white-space: nowrap; }
+.lift-phase { color: var(--ink-soft); }
+.lift-squares { display: flex; gap: 0.2rem; grid-column: 1 / -1; min-height: 0.8rem; }
+.lift-squares i { display: block; flex: none; width: 0.8rem; height: 0.8rem; border: 1px solid var(--ink-mute); }
+.lift-squares i.done { background: var(--ink); border-color: var(--ink); }
+.lift-squares i.now { border: 0.2rem solid var(--ink); }
+
 /* Icons: one stroke, square ends. */
 .icon { width: 1.5rem; height: 1.5rem; flex: none; fill: none; stroke: currentColor; stroke-width: 2.25; stroke-linecap: square; stroke-linejoin: miter; }
 .icon--s { width: 1.1rem; height: 1.1rem; }
