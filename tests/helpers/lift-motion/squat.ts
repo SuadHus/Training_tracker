@@ -1,10 +1,10 @@
-// The squat coach's targets, one Check each: value measured on the set, and the range the coach allows.
+// The reference targets for the squat, one Check each: value measured on the set, and the range allowed.
 import type { LiftKind } from "../../../src/lib/lifts";
 import * as M from "./measure";
 import { barToHull, kneePastToe, maxOver, shankOf } from "./util";
 import { type Check, between, atMost, atLeast, getSet } from "./check";
 
-export function squatChecks(kind: "squat-low" | "squat-high"): Check[] {
+function squatChecks(kind: "squat-low" | "squat-high"): Check[] {
   const low = kind === "squat-low";
   const set = getSet(kind, 2);
   const s = M.sample(set);
@@ -125,15 +125,17 @@ export function squatChecks(kind: "squat-low" | "squat-high"): Check[] {
   c("shank angle at the bottom (deg)", M.both((sd) => M.slope(pb.ankle[sd], pb.knee[sd])), low ? 26 : 35, low ? 29 : 39);
   c("hand-to-hand (m)", M.dist(pb.hand.R, pb.hand.L), low ? 0.68 : 0.55, low ? 0.76 : 0.62);
   c("toe-out (deg)", M.stanceOf(pb).toeOut, low ? 28 : 20, low ? 30 : 25);
-  const elbowAbove = M.both((sd) => pb.elbow[sd][1] - pb.hand[sd][1]);
+  // The elbows are under the bar in a squat: below the hands, never above them. The low bar's point back and down beside the
+  // ribs; the high bar's point down and a little forward.
+  const elbowBelow = M.both((sd) => pb.hand[sd][1] - pb.elbow[sd][1]);
   if (low) {
-    c("elbow above the hand centre (m); the coach's model has no hand beyond the wrist, our wrist is 0.077 m below the hand centre: docs/lift-motion.md", elbowAbove, 0.1, 0.2);
-    c("elbow z (m)", M.both((sd) => Math.abs(pb.elbow[sd][2])), 0.3, 0.38);
-    c("elbow ahead of the hand (m, <= 0)", Math.max(...M.SIDES.map((sd) => pb.elbow[sd][0] - pb.hand[sd][0])), -1, 0);
-    c("bar behind the torso axis (m); the coach's 0.10-0.12 widened to 0.13: the drawn ribs (radius 0.118, ball 0.01 forward) are wider than that band lets a bar rest 10 mm clear of them, docs/lift-motion.md", M.behindAxis(pb, pb.bar), 0.1, 0.13);
+    c("elbow below the hand centre (m): under the bar, pointing back and down", elbowBelow, 0.12, 0.3);
+    c("elbow z (m): beside the ribs, inside the hands", M.both((sd) => Math.abs(pb.elbow[sd][2])), 0.15, 0.32);
+    c("elbow behind the torso axis (m): the low bar's elbows point back", M.both((sd) => M.behindAxis(pb, pb.elbow[sd])), 0.02, 0.2);
+    c("bar behind the torso axis (m); the reference 0.10-0.12 widened to 0.13: the drawn ribs (radius 0.118, ball 0.01 forward) are wider than that band lets a bar rest 10 mm clear of them, docs/lift-motion.md", M.behindAxis(pb, pb.bar), 0.1, 0.13);
   } else {
-    c("elbow below the hand centre (m)", -elbowAbove, 0.25, 0.35);
-    c("elbow below the wrist, the literal wording of the coach (m)", M.both((sd) => pb.wrist[sd][1] - pb.elbow[sd][1]), 0.25, 0.35);
+    c("elbow below the hand centre (m)", elbowBelow, 0.25, 0.35);
+    c("elbow below the wrist, as the reference words it (m)", M.both((sd) => pb.wrist[sd][1] - pb.elbow[sd][1]), 0.25, 0.35);
     c("bar behind the torso axis (m)", M.behindAxis(pb, pb.bar), 0.08, 0.11);
     c("bar to head centre at the bottom (m)", M.dist(pb.bar, pb.head), 0.19, 5);
   }
@@ -158,13 +160,15 @@ export function squatChecks(kind: "squat-low" | "squat-high"): Check[] {
   }
   c("hand speed outside the unrack and release (m/s)", handSpeed, 0, 2.5);
   c("elbow speed outside the unrack and release (m/s)", elbowSpeed, 0, 2.5);
-  let axisMin = 9, headMin = 9, armThigh = 9;
+  let axisMin = 9, headMin = 9, armThigh = 9, underBar = 9;
   for (let i = 0; i < s.poses.length; i++) {
     const p = s.poses[i];
     axisMin = Math.min(axisMin, Math.abs(M.behindAxis(p, p.bar)));
     headMin = Math.min(headMin, M.dist(p.bar, p.head));
     if (p.gripping) for (const a of M.SIDES) for (const b of M.SIDES) armThigh = Math.min(armThigh, M.segSeg(p.elbow[a], p.wrist[a], p.hip[b], p.knee[b]));
+    if (p.gripping) for (const a of M.SIDES) underBar = Math.min(underBar, p.hand[a][1] - p.elbow[a][1]);
   }
+  c("the elbows are under the bar in every frame the hands hold it, from the hooks to the hooks (least height of the hand above the elbow, m)", underBar, 0.08, 5);
   c("bar never within 0.07 m of the torso axis (min, m)", axisMin, 0.07, 5);
   c("bar never within 0.15 m of the head centre (min, m)", headMin, 0.15, 5);
   c("arm to thigh distance while gripping (m)", armThigh, 0.12, 5);
@@ -178,7 +182,7 @@ export function squatChecks(kind: "squat-low" | "squat-high"): Check[] {
   c("end: lifter clear of the bar (pelvis x ahead of the bar, m)", pe.pelvis[0] - pe.bar[0], 0.25, 2);
   const durations = [2, 8].map((n) => getSet(kind, n).duration);
   c("duration, 2 reps (s)", durations[0], 12, 14);
-  c("duration, 8 reps (s): the coach's 28-31 s plus the last reps' grind", durations[1], 28, 32.6);
+  c("duration, 8 reps (s): the reference 28-31 s plus the last reps' grind", durations[1], 28, 32.6);
   void rack; void settle; void walkout; void walkIn;
   return out;
 }
@@ -205,7 +209,7 @@ export function lowHighChecks(): Check[] {
 void ({} as LiftKind);
 void between; void atMost; void atLeast;
 
-export function squatStanding(kind: "squat-low" | "squat-high"): Check[] {
+function squatStanding(kind: "squat-low" | "squat-high"): Check[] {
   const set = getSet(kind, 2);
   const s = M.sample(set);
   const out: Check[] = [];
@@ -230,7 +234,7 @@ export function squatStanding(kind: "squat-low" | "squat-high"): Check[] {
     {
       const p = s.poses[s.idx(lg.start + 0.5)];
       void p;
-      // the lifter stays at the rack's height until he steps out of it (round 4: standing up with the bar still at his back put it inside him); he is up by the end of the second step
+      // the lifter stays at the rack's height until he steps out of it (standing up with the bar still at his back would put it inside him); he is up by the end of the second step
       const q = s.poses[s.idx(s.seg("step out")!.end - 0.1)];
       c("step out: standing by 0.1 s before the end of the step out, pelvis height (m)", q.pelvis[1], 0.91, 1);
       c("step out: standing by 0.1 s before the end of the step out, torso lean (deg)", M.slope(q.pelvis, q.chest), 0, 13);
@@ -247,7 +251,7 @@ export function squatStanding(kind: "squat-low" | "squat-high"): Check[] {
       const hangZ = Math.abs(s.poses[i1].elbow.R[2]);
       c("release: elbow lateral excursion beyond its hanging position (m)", maxOver(s.poses.slice(i0, i1 + 1).map((p) => Math.abs(p.elbow.R[2]) - hangZ)), -1, 0.08);
       const rel0 = s.poses[i0].elbow.R[1] - s.poses[i0].shoulder.R[1];
-      c("release: elbow height above the shoulder never more than 0.05 above where it started (m; round 5: the elbow swings back along its arc)", maxOver(s.poses.slice(i0, i1 + 1).map((p) => p.elbow.R[1] - p.shoulder.R[1])) - rel0, -1, 0.05);
+      c("release: elbow height above the shoulder never more than 0.05 above where it started (m; the elbow swings back along its arc)", maxOver(s.poses.slice(i0, i1 + 1).map((p) => p.elbow.R[1] - p.shoulder.R[1])) - rel0, -1, 0.05);
       let v = 0;
       for (let i = i0 + 1; i <= i1; i++) v = Math.max(v, M.dist(s.poses[i].elbow.R, s.poses[i - 1].elbow.R) * M.HZ);
       c("release: peak elbow speed (m/s)", v, 0, 1.4);
@@ -258,14 +262,14 @@ export function squatStanding(kind: "squat-low" | "squat-high"): Check[] {
     // ---- smooth through the rep: no kink of the pelvis at the top, the bottom or the start of a descent
     {
       const i0 = iR1 + 2, i1 = iRL - 3;
-      c("reps: pelvis acceleration (m/s2); the knee near straight turns a millimetre of hip height into a large swing of the knee: 30, not 25, with the coach's 0.15 s lead", M.peaks(s.poses.map((p) => p.pelvis), i0, i1).accel, 0, 30);
+      c("reps: pelvis acceleration (m/s2); the knee near straight turns a millimetre of hip height into a large swing of the knee: 30, not 25, with the reference 0.15 s lead", M.peaks(s.poses.map((p) => p.pelvis), i0, i1).accel, 0, 30);
       c("reps: knee acceleration, right (m/s2)", M.peaks(s.poses.map((p) => p.knee.R), i0, i1).accel, 0, 25);
       c("reps: knee acceleration, left (m/s2)", M.peaks(s.poses.map((p) => p.knee.L), i0, i1).accel, 0, 25);
       c("reps: hip jerk (m/s3)", M.peaks(s.poses.map((p) => p.hip.R), i0, i1).jerk, 0, 5000);
       c("whole set: pelvis acceleration (m/s2)", M.peaks(s.poses.map((p) => p.pelvis), 2, s.poses.length - 3).accel, 0, 35);
       c("whole set: hip jerk (m/s3)", M.peaks(s.poses.map((p) => p.hip.R), 2, s.poses.length - 3).jerk, 0, 12000);
     }
-    // ---- the pause, three ways: within 1 cm (the coach's), within 1 mm, and slower than 0.05 m/s
+    // ---- the pause, three ways: within 1 cm (the reference), within 1 mm, and slower than 0.05 m/s
     {
       const tB = M.extremeTime(s, r1.start, r1.end, "min"), iB = s.idx(tB), yB = s.poses[iB].bar[1];
       let a = iB, b = iB;
@@ -289,7 +293,7 @@ export function squatStanding(kind: "squat-low" | "squat-high"): Check[] {
   return out;
 }
 
-export function squatBottomAndRelease(kind: "squat-low" | "squat-high"): Check[] {
+function squatBottomAndRelease(kind: "squat-low" | "squat-high"): Check[] {
   const set = getSet(kind, 2);
   const s = M.sample(set);
   const out: Check[] = [];
@@ -298,7 +302,7 @@ export function squatBottomAndRelease(kind: "squat-low" | "squat-high"): Check[]
   const iR1 = s.idx(r1.start), iR1E = s.idx(r1.end), iRL = s.idx(r2.end);
     const low = kind === "squat-low";
     const tB = M.extremeTime(s, r1.start, r1.end, "min"), iB = s.idx(tB), pb = s.poses[iB];
-    // ---- the shank only leans forward on the way down and only back on the way up: no loop of the knee (round 4, defect 1)
+    // ---- the shank only leans forward on the way down and only back on the way up: no loop of the knee
     for (const [label, a, b, sign] of [["descent", iR1, iB, 1], ["ascent", iB, iR1E, -1]] as const) {
       let reverse = 0, top = -9;
       for (let i = a; i < b; i++) { reverse = Math.max(reverse, -sign * (shankOf(s.poses[i + 1]) - shankOf(s.poses[i]))); top = Math.max(top, shankOf(s.poses[i])); }
@@ -310,13 +314,13 @@ export function squatBottomAndRelease(kind: "squat-low" | "squat-high"): Check[]
     c("knee past the toe over the whole rep stays inside the bottom band: its largest value (m)", maxKpt, low ? 0 : 0.04, low ? 0.02 : 0.08);
     c("the knee never goes further forward than at the bottom (m)", maxKneeX - M.both((sd) => pb.knee[sd][0] - pb.ankle[sd][0]), -0.001, 0.001);
 
-    // ---- the bar clear of the drawn back in every frame, with the bar in the hooks and walking away from them (defect 2)
+    // ---- the bar clear of the drawn back in every frame, with the bar in the hooks and walking away from them
     let worst = 9, tw = 0;
     for (let i = 0; i < s.poses.length; i += 2) { const g = barToHull(s.poses[i]); if (g < worst) { worst = g; tw = s.times[i]; } }
     void tw;
     c("bar to the drawn upper trunk (ribs 0.118 at 55% with 0.01 forward, shoulder and chest balls), worst frame of the set (m)", worst, 0.01, 9);
 
-    // ---- the bottom: an easy stop and a ramped launch (defect 3)
+    // ---- the bottom: an easy stop and a ramped launch
     {
       const bar = s.poses.map((p) => p.bar), pelvis = s.poses.map((p) => p.pelvis), bs = M.speedSeries(bar);
       const acc = (series: Array<readonly number[]>, i: number) => M.len(M.add(M.sub(series[i + 1], M.mul(series[i], 2)), series[i - 1])) * M.HZ * M.HZ;
@@ -327,11 +331,11 @@ export function squatBottomAndRelease(kind: "squat-low" | "squat-high"): Check[]
       let stopI = rt.e0;
       for (let i = rt.e0; i < rt.e1; i++) if (s.poses[i].bar[1] <= rt.ext + 0.001) { stopI = i; break; }
       const a0 = Math.max(rt.m0 + 2, stopI - Math.round(0.4 * M.HZ));
-      c("the stop: largest bar acceleration in the 0.4 s before the bar stops (m/s2; was 11.4 over 40 ms)", maxOver(Array.from({ length: stopI - a0 + 1 }, (_, k) => acc(bar, a0 + k))), 0, 6.5);
+      c("the stop: largest bar acceleration in the 0.4 s before the bar stops (m/s2)", maxOver(Array.from({ length: stopI - a0 + 1 }, (_, k) => acc(bar, a0 + k))), 0, 6.5);
       c("the stop: largest pelvis acceleration in the 0.4 s before the bar stops (m/s2)", maxOver(Array.from({ length: stopI - a0 + 1 }, (_, k) => acc(pelvis, a0 + k))), 0, 9);
       c("the stop: the bar's speed 0.15 s before it stops is not yet down to the creep (m/s): it eases in, over a third of a second", bs[stopI - Math.round(0.15 * M.HZ)], 0.2, 0.6);
-      c("the launch: largest bar acceleration in the 0.5 s after the bar leaves the bottom (m/s2; was 11.8 over 60 ms)", maxOver(Array.from({ length: Math.round(0.5 * M.HZ) }, (_, k) => acc(bar, leaveI + 2 + k))), 0, 7);
-      c("the launch: the bar takes at least 0.09 s to go from 0.03 to 0.3 m/s (s; was 0.025)", (() => { let i = stopI + 2; while (i < rt.a && bs[i] < 0.03) i++; const j0 = i; while (i < rt.a && bs[i] < 0.3) i++; return (i - j0) / M.HZ; })(), 0.09, 0.4);
+      c("the launch: largest bar acceleration in the 0.5 s after the bar leaves the bottom (m/s2)", maxOver(Array.from({ length: Math.round(0.5 * M.HZ) }, (_, k) => acc(bar, leaveI + 2 + k))), 0, 7);
+      c("the launch: the bar takes at least 0.09 s to go from 0.03 to 0.3 m/s (s)", (() => { let i = stopI + 2; while (i < rt.a && bs[i] < 0.03) i++; const j0 = i; while (i < rt.a && bs[i] < 0.3) i++; return (i - j0) / M.HZ; })(), 0.09, 0.4);
       // the humps of the ascent: a first of 0.55-0.66 m/s about 0.2-0.3 s after leaving, a dip, and a second hump lower than the first
       let first = 0, tFirst = 0;
       for (let i = leaveI; i < leaveI + Math.round(0.45 * M.HZ); i++) if (bs[i] > first) { first = bs[i]; tFirst = (i - leaveI) / M.HZ; }
@@ -342,52 +346,52 @@ export function squatBottomAndRelease(kind: "squat-low" | "squat-high"): Check[]
       c("the sticking dip (m/s)", dip, 0.35, 0.5);
       let second = 0;
       for (let i = iDip; i < rt.a - Math.round(0.1 * M.HZ); i++) second = Math.max(second, bs[i]);
-      c("the second hump is lower than the first by (m/s; the reverse of the graft's 0.82, 0.35, 0.57)", first - second, 0.03, 0.3);
+      c("the second hump is lower than the first by (m/s)", first - second, 0.03, 0.3);
       c("the second hump is above the dip by (m/s)", second - dip, 0.05, 0.4);
     }
 
-    // ---- the release (defects 4 and 9): the arm clears the drawn trunk, the forearm drops on a steady unfolding, no flick
+    // ---- the release: the arm clears the drawn trunk, the forearm drops on a steady unfolding, no flick
     {
       const lg = s.seg("let go")!, so = s.seg("step out")!;
       let hand = 9, fore = 9, elb = 9, hs = 0;
       for (let i = s.idx(lg.start) - 4; i <= s.idx(so.end); i += 2) { const g = M.armToDrawnTrunk(s.poses[i]); hand = Math.min(hand, g.hand); fore = Math.min(fore, g.forearm); elb = Math.min(elb, g.elbow); }
-      c("release and step out: hand to the drawn trunk, worst (m; was -0.025 for 0.15 s on the high bar)", hand, 0.01, 9);
-      c("release and step out: forearm to the drawn trunk, worst (m; was -0.012)", fore, 0.01, 9);
-      c("release and step out: elbow and upper arm to the drawn trunk, worst (m; was -0.004)", elb, 0.01, 9);
+      c("release and step out: hand to the drawn trunk, worst (m)", hand, 0.01, 9);
+      c("release and step out: forearm to the drawn trunk, worst (m)", fore, 0.01, 9);
+      c("release and step out: elbow and upper arm to the drawn trunk, worst (m)", elb, 0.01, 9);
       const i0 = s.idx(lg.start), i1 = s.idx(lg.end);
       let fall = 0;
       for (let i = i0; i < i1; i++) fall = Math.max(fall, M.elbowAngle(s.poses[i], "R") - M.elbowAngle(s.poses[i + 1], "R"));
-      c("release: the elbow's flexion only falls (the interior angle never closes again; largest closing step in 1/240 s, deg)", fall, 0, 0.05);
+      c("release: the elbow's flexion only falls (the interior angle never closes; largest closing step in 1/240 s, deg)", fall, 0, 0.05);
       let smooth = 0;
       for (let i = i0 + 2; i < i1 - 1; i++) smooth = Math.max(smooth, Math.abs(M.elbowAngle(s.poses[i + 1], "R") - 2 * M.elbowAngle(s.poses[i], "R") + M.elbowAngle(s.poses[i - 1], "R")) * M.HZ * M.HZ);
       c("release: the elbow angle's acceleration (deg/s2): a steady unfolding, not a flick", smooth, 0, 1200);
       for (const sd of M.SIDES) hs = Math.max(hs, ...Array.from({ length: i1 - i0 }, (_, k) => M.dist(s.poses[i0 + k + 1].hand[sd], s.poses[i0 + k].hand[sd]) * M.HZ));
-      c("release: peak hand speed (m/s): the arms drop in 1.3 s, not 2 s; the coach allows 2.5", hs, 0, 1.5);
+      c("release: peak hand speed (m/s): the arms drop in 1.3 s, not 2 s; the reference allows 2.5", hs, 0, 1.5);
     }
 
-    // ---- the elbows, as the coach wrote them and as the hand centre has them (defect 5)
+    // ---- the elbows, as the reference words them and as the hand centre has them
     {
-      if (low) c("low bar: elbow above the wrist, the coach's wording, recorded (m): the wrist is 0.077 below the hand centre; the three constraints (z, not ahead of the hand, 10-20 above the wrist) cannot all hold on this geometry: docs/lift-motion.md", M.both((sd) => pb.elbow[sd][1] - pb.wrist[sd][1]), 0.2, 0.3);
-      else c("high bar: elbow below the wrist and below the hand centre both in the coach's 0.25-0.35 (smallest of the two, m)", Math.min(M.both((sd) => pb.wrist[sd][1] - pb.elbow[sd][1]), M.both((sd) => pb.hand[sd][1] - pb.elbow[sd][1]) - 0.0), 0.25, 0.35);
+      if (low) c("low bar: elbow below the wrist (m)", M.both((sd) => pb.wrist[sd][1] - pb.elbow[sd][1]), 0.04, 0.25);
+      else c("high bar: elbow below the wrist and below the hand centre both in the reference 0.25-0.35 (smallest of the two, m)", Math.min(M.both((sd) => pb.wrist[sd][1] - pb.elbow[sd][1]), M.both((sd) => pb.hand[sd][1] - pb.elbow[sd][1]) - 0.0), 0.25, 0.35);
     }
 
-    // ---- the stance (defect 6) and the thigh against the foot (defect 9)
-    c("heel to heel at the bottom (m): the coach's 0.42 (low bar) and 0.37 (high bar)", M.dist(pb.heel.R, pb.heel.L), low ? 0.41 : 0.36, low ? 0.43 : 0.385);
+    // ---- the stance and the thigh against the foot
+    c("heel to heel at the bottom (m): the reference 0.42 (low bar) and 0.37 (high bar)", M.dist(pb.heel.R, pb.heel.L), low ? 0.41 : 0.36, low ? 0.43 : 0.385);
     const thighYaw = M.both((sd) => M.deg(Math.atan2(Math.abs(pb.knee[sd][2] - pb.hip[sd][2]), pb.knee[sd][0] - pb.hip[sd][0])));
     const footYaw = M.both((sd) => { const f = M.sub(pb.toe[sd], pb.heel[sd]); return M.deg(Math.atan2(Math.abs(f[2]), f[0])); });
-    c("thigh yaw less foot yaw at the bottom (deg; was 3.2 low bar after the wider stance and 6.1 high bar)", thighYaw - footYaw, -1, low ? 3 : 5);
+    c("thigh yaw less foot yaw at the bottom (deg)", thighYaw - footYaw, -1, low ? 3 : 5);
 
-    // ---- the walkout: knee speed with margin (defect 7)
+    // ---- the walkout: knee speed with margin
     {
       const un = s.seg("unrack")!, iUn = s.idx(un.end);
       let ks = 0;
       for (let i = iUn + 1; i < iR1; i++) for (const sd of M.SIDES) ks = Math.max(ks, M.dist(s.poses[i + 1].knee[sd], s.poses[i].knee[sd]) * M.HZ);
-      c("walkout: knee speed with margin under the 1.6 limit (m/s; was 1.55)", ks, 0, 1.5);
+      c("walkout: knee speed with margin under the 1.6 limit (m/s)", ks, 0, 1.5);
     }
   return out;
 }
 
-export function squatTempoAndRelease(kind: "squat-low" | "squat-high"): Check[] {
+function squatTempoAndRelease(kind: "squat-low" | "squat-high"): Check[] {
   const set = getSet(kind, 2);
   const s = M.sample(set);
   const out: Check[] = [];
@@ -397,7 +401,7 @@ export function squatTempoAndRelease(kind: "squat-low" | "squat-high"): Check[] 
     const low = kind === "squat-low";
     const rel = s.seg("let go")!, so = s.seg("step out")!;
     const i0 = s.idx(rel.start) - 2;
-    // ---- defect "the release unfolds the forearm through the front": the arms drop down the side, the forearm hangs below the elbow
+    // ---- the release does not unfold the forearm through the front: the arms drop down the side, the forearm hangs below the elbow
     let ahead = -9, hand = 0, wrist = 0, elbowRise = -9;
     const e0 = s.poses[s.idx(rel.start)].elbow.R[1] - s.poses[s.idx(rel.start)].shoulder.R[1];
     for (let i = i0; i < s.poses.length; i++) {
@@ -412,7 +416,7 @@ export function squatTempoAndRelease(kind: "squat-low" | "squat-high"): Check[] 
     c("release: peak hand speed over the whole release and step out (m/s)", hand, 0, 1.5);
     c("release: peak wrist speed (m/s)", wrist, 0, 1.5);
     c("release: the elbows swing back along their arc, rising at most 0.05 m above where they were at the let go (m)", elbowRise, -1, 0.05);
-    c("release: takes 1.0 to 1.6 s: the coach wants at least 0.7 s of dropping, the coach no dead time in the rack", rel.end - rel.start, 1.0, 1.6);
+    c("release: takes 1.0 to 1.6 s: at least 0.7 s of dropping, no dead time in the rack", rel.end - rel.start, 1.0, 1.6);
     {
       // the elbows drop; they do not swing back past where the grip had them (the low bar grips with the elbows 0.22 m behind the shoulder line)
       const p0 = s.poses[s.idx(rel.start)];
@@ -424,10 +428,11 @@ export function squatTempoAndRelease(kind: "squat-low" | "squat-high"): Check[] 
     {
       let mitt = 9;
       for (let i = s.idx(rel.start); i <= s.idx(so.end); i += 2) mitt = Math.min(mitt, M.limbGaps(s, i, i, () => true).handThigh);
-      c("release and step out: the free hand (mitt) to the drawn thigh, closest (m; 0.004 low and 0.011 high by the verifier's measure)", mitt, 0.03, 9);
+      c("release and step out: the free hand (mitt) to the drawn thigh, closest (m; 0.004 low and 0.011 high)", mitt, 0.03, 9);
     }
-    // ---- the upper arm, from 40% of its length down, against the drawn trunk as the hull the drawing fills: while gripping it stays out of the hull;
-    // in the release and the hang the drawn armpit is filled and the arm lies along the ribs (recorded)
+    // ---- the upper arm, from 40% of its length down, against the drawn trunk as the hull the drawing fills: the high bar's stays out of the hull
+    // while gripping; the low bar's points back and down along the ribs, as it does on a lifter, and is drawn over the torso (recorded); in the
+    // release and the hang the drawn armpit is filled and the arm lies along the ribs (recorded)
     {
       let grip = 9, free = 9;
       for (let i = 0; i < s.poses.length; i += 3) {
@@ -438,11 +443,11 @@ export function squatTempoAndRelease(kind: "squat-low" | "squat-high"): Check[] 
           if (p.gripping) grip = Math.min(grip, g); else free = Math.min(free, g);
         }
       }
-      c("upper arm (from 40% down) to the drawn trunk hull while gripping (m; was -0.037 high bar, rep 1)", grip, low ? -0.003 : -0.012, 9);
-      c("upper arm (from 40% down) to the drawn trunk hull in the release and the hang, recorded (m; the drawn armpit is filled; was -0.020 and -0.019)", free, -0.02, 9);
+      c("upper arm (from 40% down) to the drawn trunk hull while gripping (m; the low bar's lies along the ribs)", grip, low ? -0.07 : -0.012, 9);
+      c("upper arm (from 40% down) to the drawn trunk hull in the release and the hang, recorded (m; the drawn armpit is filled)", free, low ? -0.07 : -0.02, 9);
     }
     // ---- tempo with margin: the 8-rep set about 30 s, the bar's speed 0.2 s off the bottom about 0.52 m/s
-    c("duration, 8 reps, the coach's 28-31 s plus the last reps' grind (s)", getSet(kind, 8).duration, 28.5, 32.5);
+    c("duration, 8 reps, the reference 28-31 s plus the last reps' grind (s)", getSet(kind, 8).duration, 28.5, 32.5);
     c("duration, 2 reps (s)", set.duration, 12.5, 13.8);
     {
       // the walk in is as slow as the walkout was, with the same bar: the end of a heavy set does not look brisk
@@ -454,18 +459,17 @@ export function squatTempoAndRelease(kind: "squat-low" | "squat-high"): Check[] 
       const rt = M.repTiming(s, 1), bs = M.speedSeries(s.poses.map((p) => p.bar));
       let leaveI = rt.e0;
       for (let i = rt.e1; i > rt.e0; i--) if (s.poses[i].bar[1] <= rt.ext + 0.002) { leaveI = i; break; }
-      c("rep: bar speed 0.2 s after the bar leaves the bottom, with margin under the 0.6 limit (m/s; was 0.582 and 0.596)", bs[leaveI + Math.round(0.2 * M.HZ)], 0.45, 0.58);
+      c("rep: bar speed 0.2 s after the bar leaves the bottom, with margin under the 0.6 limit (m/s)", bs[leaveI + Math.round(0.2 * M.HZ)], 0.45, 0.58);
     }
-    // ---- recorded: the coach's numbers that the bar over the midfoot forbids (docs/lift-motion.md)
+    // ---- recorded: the reference numbers that the bar over the midfoot forbids (docs/lift-motion.md)
     {
       const p = s.poses[iR1];
-      c("recorded: stands tall at the start of a rep, torso lean (deg); the verifier asked at most 5, which the bar over the midfoot (ankle + 0.07, within 1 cm) with the bar 0.11 behind the torso axis forbids", M.slope(p.pelvis, p.chest), 0, low ? 11.7 : 9.7);
-      c("recorded: stands tall at the start of a rep, knee interior angle (deg); the verifier asked at least 176", M.both((sd) => M.kneeAngle(p, sd)), 172.5, 178.9);
+      c("recorded: stands tall at the start of a rep, torso lean (deg); the reference asks at most 5, which the bar over the midfoot (ankle + 0.07, within 1 cm) with the bar 0.11 behind the torso axis forbids", M.slope(p.pelvis, p.chest), 0, low ? 11.7 : 9.7);
+      c("recorded: stands tall at the start of a rep, knee interior angle (deg); the reference asks at least 176", M.both((sd) => M.kneeAngle(p, sd)), 172.5, 178.9);
       c("recorded: stands tall at the start of a rep, pelvis height (m)", p.pelvis[1], low ? 0.917 : 0.923, 1);
       const pb = set.pose(M.extremeTime(s, r1.start, r1.end, "min"));
       if (low) {
-        c("recorded: low bar, elbow above the wrist (m); the coach's 0.10-0.20 cannot hold with elbow z 0.30-0.38 and no elbow ahead of the hand", M.both((sd) => pb.elbow[sd][1] - pb.wrist[sd][1]), 0.255, 0.275);
-        c("recorded: low bar, bar behind the torso axis (m); the coach's 0.10-0.12 is inside the drawn ribs by 3 mm at 0.12", M.behindAxis(pb, pb.bar), 0.12, 0.128);
+        c("recorded: low bar, bar behind the torso axis (m); the reference 0.10-0.12 is inside the drawn ribs by 3 mm at 0.12", M.behindAxis(pb, pb.bar), 0.12, 0.128);
       }
       const un = s.seg("unrack")!, fe = M.footEvents(s, s.idx(un.end), iR1);
       c("recorded: the middle step of the walkout is the whole travel, a square finish (m); 0.30 each would end with the feet 0.30 m apart", fe.steps[1].length, 0.42, 0.5);

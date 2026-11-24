@@ -42,7 +42,7 @@ An exercise is drawn as one of six lifts by its name, and only if it is a barbel
 - **Bench press**: "Bench press", "Bench". **Close grip bench press**: "Close grip bench press", "CGBP", "Close-grip bench".
 - **Conventional deadlift**: "Conventional deadlift". **Sumo deadlift**: "Sumo deadlift". A plain "Deadlift" is drawn as a conventional deadlift.
 - Words that do not change the picture are let through: "Paused squat", "Low bar squat 3ct", "Bench press (touch and go)".
-- Not drawn: "Front squat", "Incline bench press", "Romanian deadlift", "Trap bar deadlift", "Deficit deadlift", a name that asks for two lifts at once ("Squat / bench"), and any exercise that is not loaded with a barbell.
+- Not drawn: "Front squat", "Incline bench press", "Romanian deadlift", "Trap bar deadlift", "Deficit deadlift", a name that asks for two lifts at once ("Squat / bench"), a name with a fraction or a decimal ("1 1/2 squat"), and any exercise that is not loaded with a barbell.
 
 A set is drawn only when its load can be made from plates and it has between one and 30 reps. The lifter's movement is a model that is the same for every load; the load, the reps and the plates are the logged ones.
 

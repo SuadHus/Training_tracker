@@ -1,4 +1,4 @@
-// The bench coach's targets, one Check each.
+// The reference targets for the bench, one Check each.
 import * as M from "./measure";
 import { barAt1kHz, barToHull, maxOver } from "./util";
 import { type Check, getSet } from "./check";
@@ -30,7 +30,7 @@ export function benchNumbers(kind: "bench" | "bench-close"): BenchNumbers {
   };
 }
 
-export function benchChecks(kind: "bench" | "bench-close"): Check[] {
+function benchChecks(kind: "bench" | "bench-close"): Check[] {
   const close = kind === "bench-close";
   const set = getSet(kind, 2);
   const s = M.sample(set);
@@ -49,13 +49,13 @@ export function benchChecks(kind: "bench" | "bench-close"): Check[] {
   c("hand-to-hand at the touch (m)", n.hands, close ? 0.38 : 0.64, close ? 0.42 : 0.68);
   c("elbow flare at the touch (deg)", n.flare, close ? 16 : 45, close ? 26 : 60);
   c("touch point toward the feet from the shoulder line (m)", n.touchX, close ? 0.17 : 0.115, close ? 0.2 : 0.135);
-  // The coach's numbers, restored (round 5): the bar centre 0.10-0.14 above the shoulder joints, the forearm tilts at most 4 / 5 deg (bench) and
+  // The reference numbers: the bar centre 0.10-0.14 above the shoulder joints, the forearm tilts at most 4 / 5 deg (bench) and
   // 8 / 10 deg (close grip), the elbow interior angle 38-42 (bench) and 34-39 (close grip). They hold together only if the bar is at most 0.138
   // above the shoulder joints, which it is by settling into the drawn chest (docs/lift-motion.md).
   c("bar centre above the shoulder-joint line at the touch (m)", n.barAboveShoulder, 0.1, 0.14);
-  c("forearm tilt at the touch, side view (deg): the coach's 4 (bench) and 8 (close grip)", n.tiltSide, 0, close ? 8 : 4);
-  c(`forearm tilt at the touch, front view (deg): the coach's ${close ? 10 : 5}`, n.tiltFront, 0, close ? 10 : 5);
-  c("elbow interior angle at the touch (deg): the coach's 38-42 (bench) and 34-39 (close grip)", n.elbowAngle, close ? 34 : 38, close ? 39 : 42);
+  c("forearm tilt at the touch, side view (deg): the reference 4 (bench) and 8 (close grip)", n.tiltSide, 0, close ? 8 : 4);
+  c(`forearm tilt at the touch, front view (deg): the reference ${close ? 10 : 5}`, n.tiltFront, 0, close ? 10 : 5);
+  c("elbow interior angle at the touch (deg): the reference 38-42 (bench) and 34-39 (close grip)", n.elbowAngle, close ? 34 : 38, close ? 39 : 42);
   c("elbow z at the touch (m)", n.elbowZ, close ? 0.25 : 0.3, 1);
   let wristBelow = 9, handLevel = 0, barLevel = 0;
   for (let i = 0; i < s.poses.length; i++) {
@@ -104,7 +104,7 @@ export function benchChecks(kind: "bench" | "bench-close"): Check[] {
   }
   c("knee, ankle and elbow clear above the pad where they are over it (m)", padHit, 0, 9);
   const lock = (() => { const q = set.pose(M.extremeTime(s, r1.start, r1.end, "max")); return M.both((sd) => M.elbowAngle(q, sd)); })();
-  c("elbow interior angle at lockout (deg); the coach's graft was 171.9", lock, 170, 179);
+  c("elbow interior angle at lockout (deg); the reference lockout is 171.9", lock, 170, 179);
 
   // ---- lift-off
   const hook = s.poses[0].bar;
@@ -120,7 +120,7 @@ export function benchChecks(kind: "bench" | "bench-close"): Check[] {
   c("lockout (s)", rt.last, 0.35, 0.5);
   c("rep (s)", rt.rep, 2.4, 2.8);
   const durations = [8].map((k) => getSet(kind, k).duration);
-  c("duration, 8 reps (s): the coach's 24-27 s plus the last reps' grind", durations[0], 24, 29);
+  c("duration, 8 reps (s): the reference 24-27 s plus the last reps' grind", durations[0], 24, 29);
   c("tail after the last rep (s)", set.duration - r2.end, 2.8, 3.2);
 
   // ---- smoothness
@@ -194,19 +194,19 @@ export function benchPairChecks(): Check[] {
   return out;
 }
 
-export function benchContact(kind: "bench" | "bench-close"): Check[] {
+function benchContact(kind: "bench" | "bench-close"): Check[] {
   const set = getSet(kind, 2);
   const s = M.sample(set);
   const out: Check[] = [];
   const c = (id: string, value: number, lo: number, hi: number) => out.push({ id: `${kind}: ${id}`, value, lo, hi, note: "" });
   const r1 = s.rep(1), r2 = s.rep(2);
   const iR1 = s.idx(r1.start), iRL = s.idx(r2.end);
-    // ---- the bar rests on the chest as drawn: it sinks in a few millimetres, not the 2 cm of round 2
+    // ---- the bar rests on the chest as drawn: it sinks in a few millimetres, not 2 cm
     let barChest = 9;
     for (let i = iR1; i <= iRL; i += 4) barChest = Math.min(barChest, M.barToDrawnTorso(s.poses[i]));
     // and at the touch itself, the frame that matters most
     barChest = Math.min(barChest, M.barToDrawnTorso(set.pose(M.extremeTime(s, r1.start, r1.end, "min"))));
-    c("bar to the drawn upper torso, worst over the reps (m; negative is inside): settles 1.8 to 3.3 cm into the drawn chest (round 5: a bar resting on it is 0.158 above the shoulders, the coach's 0.14 needs this)", barChest, -0.033, -0.018);
+    c("bar to the drawn upper torso, worst over the reps (m; negative is inside): settles 1.8 to 3.3 cm into the drawn chest (a bar resting on it is 0.158 above the shoulders, the reference 0.14 needs this)", barChest, -0.033, -0.018);
     // ---- the bar's speed over the whole rep, down as well as up
     const rt = M.repTiming(s, 1);
     const bar = s.poses.map((p) => p.bar), bs = M.speedSeries(bar);
@@ -235,7 +235,7 @@ export function benchContact(kind: "bench" | "bench-close"): Check[] {
   return out;
 }
 
-export function benchTrunkAndLockout(kind: "bench" | "bench-close"): Check[] {
+function benchTrunkAndLockout(kind: "bench" | "bench-close"): Check[] {
   const set = getSet(kind, 2);
   const s = M.sample(set);
   const out: Check[] = [];
@@ -247,11 +247,11 @@ export function benchTrunkAndLockout(kind: "bench" | "bench-close"): Check[] {
     {
       let upper = 9, fore = 9;
       for (let i = iR1; i <= iRL; i += 2) { const g = M.armsToTrunkHull(s.poses[i]); upper = Math.min(upper, g.upper); fore = Math.min(fore, g.forearm); }
-      c("upper arm (from half way down it) to the drawn trunk hull over the reps, signed (m; was -0.042 on the close grip)", upper, 0, 9);
+      c("upper arm (from half way down it) to the drawn trunk hull over the reps, signed (m)", upper, 0, 9);
       c("forearm to the drawn trunk hull over the reps, signed (m)", fore, 0, 9);
     }
-    // ---- contact, within 0 to -3 mm (defects "chest" and "pelvis")
-    c("bar sinks into the drawn chest at the touch: 1.8 to 3.3 cm (m, negative is inside; round 5)", barToHull(pt), -0.033, -0.018);
+    // ---- contact, within 0 to -3 mm: the chest and the pelvis
+    c("bar sinks into the drawn chest at the touch: 1.8 to 3.3 cm (m, negative is inside)", barToHull(pt), -0.033, -0.018);
     {
       let sink = 9;
       for (const i of [iR1, iRL]) { const p = s.poses[i]; sink = Math.min(sink, p.pelvis[1] - 0.104 - 0.44, p.hip.R[1] - 0.1 - 0.44); }
@@ -260,20 +260,20 @@ export function benchTrunkAndLockout(kind: "bench" | "bench-close"): Check[] {
     // ---- the lockout, and the sticking region by vertical speed as well as by 3D speed
     {
       const lock = M.both((sd) => M.elbowAngle(set.pose(M.extremeTime(s, r1.start, r1.end, "max")), sd));
-      c("elbow interior angle at lockout (deg; was 165.5): the arms straighten", lock, 170, 178.9);
+      c("elbow interior angle at lockout (deg): the arms straighten", lock, 170, 178.9);
       const rt = M.repTiming(s, 1), bar = s.poses.map((p) => p.bar);
       const yBot = s.poses[rt.e1].bar[1], yTop = s.poses[rt.a].bar[1];
       let minVy = 9;
       for (let i = rt.e1 + 1; i < rt.a; i++) { const f = (s.poses[i].bar[1] - yBot) / (yTop - yBot); if (f >= 0.25 && f <= 0.8) minVy = Math.min(minVy, ((bar[i + 1][1] - bar[i - 1][1]) * M.HZ) / 2); }
-      c("vertical bar speed between 25% and 80% of the ascent, least (m/s; was 0.406 on the close grip)", minVy, 0.45, 0.8);
+      c("vertical bar speed between 25% and 80% of the ascent, least (m/s)", minVy, 0.45, 0.8);
       const fine = M.repTiming(s, 1, false, 0.001);
-      c("descent by 1 mm bands as well (s; was 1.14 and 1.18)", fine.first, 0.95, 1.1);
-      c("lockout by 1 mm bands as well (s; was 0.29)", fine.last, 0.35, 0.5);
+      c("descent by 1 mm bands as well (s)", fine.first, 0.95, 1.1);
+      c("lockout by 1 mm bands as well (s)", fine.last, 0.35, 0.5);
     }
-    // ---- the ending (defect "closing release")
+    // ---- the ending: the arms come to rest, they are not held up
     {
       const pe = s.poses[s.poses.length - 1];
-      c("end: both elbows come to rest at or below y 0.50 (largest, m; was 0.676: arms held up in a V)", Math.max(...M.SIDES.map((sd) => pe.elbow[sd][1])), 0, 0.5);
+      c("end: both elbows come to rest at or below y 0.50 (largest, m): not held up in a V", Math.max(...M.SIDES.map((sd) => pe.elbow[sd][1])), 0, 0.5);
       c("end: both elbows stay at least 0.20 m from the midline (least, m)", Math.min(...M.SIDES.map((sd) => Math.abs(pe.elbow[sd][2]))), 0.2, 5);
       c("end: hands rest above the chest, y at least 0.60 (least, m)", Math.min(...M.SIDES.map((sd) => pe.hand[sd][1])), 0.6, 5);
       c("end: the hands rest on the ribs, not held in the air: y at most 0.70, 0.15 above the chest at most (largest, m)", Math.max(...M.SIDES.map((sd) => pe.hand[sd][1])), 0.6, 0.7);
@@ -286,7 +286,7 @@ export function benchTrunkAndLockout(kind: "bench" | "bench-close"): Check[] {
   return out;
 }
 
-export function benchTouchGeometry(kind: "bench" | "bench-close"): Check[] {
+function benchTouchGeometry(kind: "bench" | "bench-close"): Check[] {
   const set = getSet(kind, 2);
   const s = M.sample(set);
   const out: Check[] = [];
@@ -297,21 +297,21 @@ export function benchTouchGeometry(kind: "bench" | "bench-close"): Check[] {
     const n = benchNumbers(kind as "bench" | "bench-close");
     const rt = M.repTiming(s, 1), fine = M.repTiming(s, 1, false, 0.001);
     // ---- the bar settles into the drawn chest (the cause of three majors: a bar resting on the hull is 0.158 above the shoulders, where the
-    // coach's elbow angle, forearm tilts and flare cannot hold together at any height above 0.138)
-    c("bar above the shoulder-joint line at the touch (m): the coach's 0.10-0.14, with room (was 0.158 and 0.149)", n.barAboveShoulder, 0.1, close ? 0.134 : 0.138);
-    c("forearm tilt at the touch, front view (deg): the coach's 5 (bench) and 10 (close), not widened (was 5.92 and 10.28)", n.tiltFront, 0, close ? 9.9 : 4.5);
-    c("elbow interior angle at the touch (deg): the coach's 38-42 (bench) and 34-39 (close), not widened (was 46.6 and 45.2)", n.elbowAngle, close ? 34 : 38.5, close ? 38.9 : 41.5);
-    c("forearm tilt at the touch, side view (deg): the coach's 4 (bench) and 8 (close)", n.tiltSide, 0, close ? 6 : 4);
-    c("elbow flare at the touch (deg): the coach's 45-60 (bench) and 16-26 (close); in the close grip 16.3 is the least that holds with the elbow z, the front tilt and the hands", n.flare, close ? 16.3 : 45.5, close ? 26 : 60);
+    // reference elbow angle, forearm tilts and flare cannot hold together at any height above 0.138)
+    c("bar above the shoulder-joint line at the touch (m): the reference 0.10-0.14, with room", n.barAboveShoulder, 0.1, close ? 0.134 : 0.138);
+    c("forearm tilt at the touch, front view (deg): the reference 5 (bench) and 10 (close), not widened", n.tiltFront, 0, close ? 9.9 : 4.5);
+    c("elbow interior angle at the touch (deg): the reference 38-42 (bench) and 34-39 (close), not widened", n.elbowAngle, close ? 34 : 38.5, close ? 38.9 : 41.5);
+    c("forearm tilt at the touch, side view (deg): the reference 4 (bench) and 8 (close)", n.tiltSide, 0, close ? 6 : 4);
+    c("elbow flare at the touch (deg): the reference 45-60 (bench) and 16-26 (close); in the close grip 16.3 is the least that holds with the elbow z, the front tilt and the hands", n.flare, close ? 16.3 : 45.5, close ? 26 : 60);
     c("elbow z at the touch (m): at least 0.25, with a millimetre of room", n.elbowZ, close ? 0.252 : 0.3, 1);
     // ---- the numbers that sat on a band edge are inside it
-    c("hand-to-hand at the touch, off the edge of the coach's band (m)", n.hands, close ? 0.39 : 0.645, close ? 0.418 : 0.675);
-    c("touch point, off the edge of the coach's band (m)", n.touchX, close ? 0.175 : 0.118, close ? 0.195 : 0.132);
+    c("hand-to-hand at the touch, off the edge of the reference band (m)", n.hands, close ? 0.39 : 0.645, close ? 0.418 : 0.675);
+    c("touch point, off the edge of the reference band (m)", n.touchX, close ? 0.175 : 0.118, close ? 0.195 : 0.132);
     // ---- the bar at 1 kHz: no corner in the velocity at the touch (the 240 Hz suite could not see 22.6 m/s2 and 22.6k m/s3)
     {
       const k = barAt1kHz(kind, r1.start, r1.end);
-      c("bar acceleration over rep 1 sampled at 1 kHz (m/s2; was 22.6 at the touch, a leftover speed of 2 cm/s)", k.accel, 0, 18);
-      c("bar jerk over rep 1 sampled at 1 kHz (m/s3; was 22.6k)", k.jerk, 0, 7500);
+      c("bar acceleration over rep 1 sampled at 1 kHz (m/s2)", k.accel, 0, 18);
+      c("bar jerk over rep 1 sampled at 1 kHz (m/s3)", k.jerk, 0, 7500);
     }
     // ---- the ascent with margin: speeds, and the press by 1 mm bands
     {
@@ -323,17 +323,17 @@ export function benchTouchGeometry(kind: "bench" | "bench-close"): Check[] {
         const f = (s.poses[i].bar[1] - yBot) / (yTop - yBot);
         if (f >= 0.25 && f <= 0.8) { minMid = Math.min(minMid, bs[i]); minVy = Math.min(minVy, ((bar[i + 1][1] - bar[i - 1][1]) * M.HZ) / 2); }
       }
-      c("bar peak speed up, off the 0.8 limit (m/s; was 0.783 and 0.788)", peak, 0.7, close ? 0.799 : 0.78);
-      c("least vertical speed between 25% and 80% of the ascent, off the 0.45 floor (m/s; the verifier measured 0.464 and 0.453)", minVy, 0.48, 0.6);
+      c("bar peak speed up, off the 0.8 limit (m/s)", peak, 0.7, close ? 0.799 : 0.78);
+      c("least vertical speed between 25% and 80% of the ascent, off the 0.45 floor (m/s)", minVy, 0.48, 0.6);
       c("least 3D speed between 25% and 80% of the ascent, at most 0.8 of the peak (m/s)", minMid, 0.45, 0.8 * peak);
-      c("press by 1 mm bands (s; the coach's 0.80-1.00 is by 1 cm bands, 0.89 here; was 1.025 by 1 mm on the close grip: the least with a peak under 0.8 on its 0.51 m rise)", fine.second, 0.8, close ? 1.01 : 0.96);
+      c("press by 1 mm bands (s; the reference 0.80-1.00 is by 1 cm bands, 0.89 here; the close grip rises 0.51 m with a peak under 0.8)", fine.second, 0.8, close ? 1.01 : 0.96);
     }
     // ---- the arms against the drawn trunk: the close grip at the touch and mid-press, and the resting forearm
     {
       const tT = M.extremeTime(s, r1.start, r1.end, "min");
       const pe = s.poses[s.poses.length - 1];
       const a = M.armToDrawnTrunk(pe);
-      c("end: the resting forearm to the drawn trunk (two hulls, as drawn), clear (m; the verifier's one hull of shoulder balls to hips is not what is drawn)", a.forearm, 0.02, 9);
+      c("end: the resting forearm to the drawn trunk (two hulls, as drawn), clear (m; against the two hulls as drawn, not one hull of shoulder balls to hips)", a.forearm, 0.02, 9);
       if (close) {
         let worst = 9;
         for (const dt of [0, 0.3, 0.6, 0.9]) { const p = set.pose(tT + dt); const g = M.armsToTrunkHull(p); worst = Math.min(worst, g.upper, g.forearm); }
@@ -344,7 +344,7 @@ export function benchTouchGeometry(kind: "bench" | "bench-close"): Check[] {
     {
       const p = s.poses[0];
       c("hip joints apart (m): 2 x 0.095, documented against BODY.hipHalf 0.09 so that the drawn thighs do not overlap", M.dist(p.hip.R, p.hip.L), 0.1899, 0.1901);
-      c("the drawn seat ball (0.03 below the pelvis, radius 0.104) against the pad top, recorded (m; -0.0295: the coach's pelvis 0.52-0.56 cannot lift it clear, 0.574 would)", p.pelvis[1] - 0.03 - 0.104 - 0.44, -0.032, 0);
+      c("the drawn seat ball (0.03 below the pelvis, radius 0.104) against the pad top, recorded (m; -0.0295: the reference pelvis 0.52-0.56 cannot lift it clear, 0.574 would)", p.pelvis[1] - 0.03 - 0.104 - 0.44, -0.032, 0);
     }
     void iR1; void iRL;
   return out;

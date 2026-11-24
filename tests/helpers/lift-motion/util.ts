@@ -3,7 +3,6 @@ import * as M from "./measure";
 import type { LiftKind } from "../../../src/lib/lifts";
 import { getSet } from "./check";
 
-export const family = (k: LiftKind) => (k.startsWith("squat") ? "squat" : k.startsWith("bench") ? "bench" : "deadlift");
 export const maxOver = (xs: number[]) => xs.reduce((a, b) => Math.max(a, b), -Infinity);
 export const minOver = (xs: number[]) => xs.reduce((a, b) => Math.min(a, b), Infinity);
 export const shankOf = (p: ReturnType<M.Sampled["set"]["pose"]>) => M.both((sd) => M.slope(p.ankle[sd], p.knee[sd]));

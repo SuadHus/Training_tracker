@@ -77,8 +77,8 @@ export function countedPlates(plates: readonly number[]): string {
 
 // ------------------------------------------------------------------------------------------------ the rep counter
 
-/** Reps beyond this get no row of squares: the words say it. */
-export const MAX_SQUARES = 12;
+/** A set of more reps than this gets no row of squares, only the words: the row is as wide as the stage's foot on a phone of 320 px allows. */
+export const MAX_SQUARES = 10;
 
 /** What the counter shows: the rep under way (or, between reps, the next), how many are finished, and the word for the phase. A finished set shows all its reps done. */
 export type Counter = { shown: number; done: number; total: number; phase: string };
@@ -89,5 +89,6 @@ export function counterOf(total: number, at: RepCount, phase: string, finished: 
   return { shown: at.rep || Math.min(total, at.done + 1), done: at.done, total, phase };
 }
 
-/** The class of each square: "done", "now" or "". */
-export const squareClasses = (c: Counter): string[] => Array.from({ length: Math.min(c.total, MAX_SQUARES) }, (_, i) => (i + 1 <= c.done ? "done" : i + 1 === c.shown ? "now" : ""));
+/** The class of each square: "done", "now" or "". None for a set too long for the row: a row that stopped short would look finished. */
+export const squareClasses = (c: Counter): string[] =>
+  c.total > MAX_SQUARES ? [] : Array.from({ length: c.total }, (_, i) => (i + 1 <= c.done ? "done" : i + 1 === c.shown ? "now" : ""));

@@ -6,7 +6,8 @@
 // view is on top at full width and the front view is a strip under it, at the scale its strip allows.
 
 import { BAR, type LiftPose, type LiftScene, type Vec3 } from "./lift-pose";
-import type { LiftKind } from "./lifts";
+import type { LiftFamily, LiftKind } from "./lifts";
+import { plateLook } from "./plate-look";
 
 /**
  * A camera on a circle round the lifter. `az` 0 looks at the lifter's front (the camera stands where the lifter
@@ -36,7 +37,7 @@ export function nearSide(az: number): "R" | "L" | null {
   return cz > 0.15 ? "R" : cz < -0.15 ? "L" : null;
 }
 
-export type Family = LiftScene["family"];
+export type Family = LiftFamily;
 export type StageSize = "wide" | "narrow";
 export type ViewId = "main" | "front";
 /** x0, y0, x1, y1 */
@@ -101,8 +102,8 @@ const PAD = {
   pelvis: 0.1, waist: 0.104, chest: 0.126, head: 0.13,
 };
 
-/** The reach of the biggest plate, its face rim and the collar, in metres from the bar's axis. */
-const PLATE_REACH = 0.45 / 2 + 0.02;
+/** The reach of the biggest plate (the site's plate table says how big the 25 kg plate is), its face rim and the collar, in metres from the bar's axis. */
+const PLATE_REACH = plateLook(25).diameter / 2 + 0.02;
 const SLEEVE_REACH = 0.032;
 
 /** The uprights stop a little above the hooks: the lifter and the bar need no more, and the stage no more air. */
@@ -113,7 +114,7 @@ export const rackTop = (rack: NonNullable<LiftScene["rack"]>) => Math.min(rack.h
  * the biggest plates it can carry, and what stands on the floor (rack, bench). Exact for the shapes the
  * drawing makes, so that the fixed stage has no air the set never uses.
  */
-export function viewExtent(camera: Camera, samples: readonly ExtentSample[], elevation = false): Box {
+function viewExtent(camera: Camera, samples: readonly ExtentSample[], elevation = false): Box {
   const { r, u } = basis(camera);
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   const add = (p: Vec3, padX: number, padY = padX) => {
@@ -164,7 +165,7 @@ export function viewExtent(camera: Camera, samples: readonly ExtentSample[], ele
  * The height of the screen line the lifter stands on, as the `u` of the camera: the lowest sole point of a foot while he works at
  * the bar. The walk to a deadlift's bar is on the same ground, a little higher on the screen where it is further away.
  */
-export function floorLine(camera: Camera, samples: readonly ExtentSample[]): number {
+function floorLine(camera: Camera, samples: readonly ExtentSample[]): number {
   const { u } = basis(camera);
   const at = samples.some((sample) => sample.working) ? samples.filter((sample) => sample.working) : samples;
   let lowest = Infinity;
@@ -174,7 +175,7 @@ export function floorLine(camera: Camera, samples: readonly ExtentSample[]): num
 
 // ---------------------------------------------------------------------------------------------------- the stage
 /** The stage is as wide as the page's column: 780 units on a desk, 358 on a phone (a unit is about a CSS pixel). */
-export const STAGE_WIDTH: Record<StageSize, number> = { wide: 780, narrow: 358 };
+const STAGE_WIDTH: Record<StageSize, number> = { wide: 780, narrow: 358 };
 /** The front view's strip on a phone, in stage units. */
 export const STRIP_HEIGHT = 132;
 /** The tallest the stage may be, in stage units. */
@@ -273,7 +274,7 @@ export function planStages(size: StageSize, lifts: ReadonlyArray<{ kind: LiftKin
 }
 
 /** The mean depth of the bar's centre along the line of sight over the poses of a set. */
-export function meanBarDepth(camera: Camera, samples: readonly ExtentSample[]): number {
+function meanBarDepth(camera: Camera, samples: readonly ExtentSample[]): number {
   const { c } = basis(camera);
   let sum = 0;
   for (const { pose } of samples) sum += dot3(pose.bar, c);
@@ -285,7 +286,7 @@ export function meanBarDepth(camera: Camera, samples: readonly ExtentSample[]): 
  * camera's side after the torso, one on the far side before it. The head goes under the torso so that the neck rises out of the
  * shoulders, unless the lifter lies down and the head is nearer the camera than the torso (a bench lifter seen from his head end), when it goes over it.
  */
-export function fixedRanks(camera: Camera, samples: readonly ExtentSample[]): BodyRanks {
+function fixedRanks(camera: Camera, samples: readonly ExtentSample[]): BodyRanks {
   const { c } = basis(camera);
   const sum: Record<string, number> = {};
   const add = (key: string, p: Vec3) => { sum[key] = (sum[key] ?? 0) + dot3(p, c); };

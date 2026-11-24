@@ -22,7 +22,8 @@ number counts as one, infinity as thirty, a kind that is none of the six throws 
 - **Squat, low bar and high bar.** under the bar 0.6, unrack 0.5, walkout 1.79 (three short steps R, L, R of 0.24, 0.46 and 0.22 m with double support between them), settle 0.7, each rep 2.81
   (descent 1.24, pause 0.08, ascent 1.31, lockout 0.17), walk in 1.87 (the same three steps back, as slow as the walkout), rack 0.4, let go 1.3, step out 0.91. 13.7 s for 2 reps, 32 s for 8.
   The bar rides over the midfoot (ankle + 0.07 m) in every frame of every rep. Low bar: bar 0.126 m behind the torso axis on the rear delts, lean 48 degrees and shank 26 at the bottom, heels
-  0.42 m apart, hands 0.72 m, elbows high behind. High bar: bar on the traps, lean 33, shank 37.5, heels 0.37, hands 0.585, elbows down. Hip crease 4 cm below the top of the knee at the bottom.
+  0.42 m apart, hands 0.72 m, elbows back and down beside the ribs. High bar: bar on the traps, lean 33, shank 37.5, heels 0.37, hands 0.585, elbows down and out. The elbows are under
+  the bar in both, in every frame the hands hold it. Hip crease 4 cm below the top of the knee at the bottom.
   heroTime: the bottom.
 - **Bench, regular and close grip.** under the bar 0.5, lift-off 1.1, settle 0.15, each rep 2.68 (close grip 2.79: descent 1.22, touch 0.1, press 1.05, lockout 0.31), rerack 1.1 and rack
   0.4 (1.5 together), let go 1.4. 10.0 s for 2 reps, 27.4 s for 8. The body does not move (head, shoulders and pelvis within 5 mm, feet planted). The bar touches the drawn chest
@@ -35,14 +36,14 @@ number counts as one, infinity as thirty, a kind that is none of the six throws 
 
 ## The targets, and where they are tested
 
-Every target that three lifting coaches wrote for the squat, the bench and the deadlift, and every defect found since, is a `Check` in `tests/helpers/lift-motion/`: `squat.ts`,
+The reference figures for each lift (timings, joint angles, bar speeds and paths, where the bar meets the chest or the thigh) and every invariant of the model are a `Check` in `tests/helpers/lift-motion/`: `squat.ts`,
 `bench.ts`, `deadlift.ts` (each with the checks of its family: tempo, stillness of the feet, bar over the midfoot, the arms against the drawn trunk and thighs, acceleration and jerk, the
-recorded numbers a coach's wish could not have), `general.ts` (bone lengths, no NaN, joints bend the anatomical way, hands on the bar, feet planted, continuity at 240 Hz for 1, 2, 5 and 30
+recorded numbers that the reference figures cannot hold), `general.ts` (bone lengths, no NaN, joints bend the anatomical way, hands on the bar, feet planted, continuity at 240 Hz for 1, 2, 5 and 30
 reps: no joint moves more than 1 cm between two samples), `pairs.ts` (low bar against high bar, bench against close grip, conventional against sumo), `measure.ts` (the measurements, taken from 240 Hz samples).
 `tests/lift-motion.test.ts` runs them for every lift, and a table of 58 deliberate mutations (a knee bent backwards, a foot sliding, a jump at a boundary, low bar and high bar swapped, sumo hands
-outside the knees, a rushed rep, a brisk walk in, hands held in the air, ...), each of which must make the suite fail, with `LIFT_MUTATIONS=1` (six minutes; not in `npm test`). `LIFT_SWEEP=1` makes the drawing sweeps of `tests/lift-draw.test.ts` four times as dense.
+outside the knees, a rushed rep, a brisk walk in, hands held in the air, ...), each of which must make the suite fail, with `LIFT_MUTATIONS=1` (six minutes; not in `npm test`; `MUTATION_REPORT=1` prints how many checks each mutation breaks). `LIFT_SWEEP=1` makes the drawing sweeps of `tests/lift-draw.test.ts` four times as dense.
 
-Where a coach's number could not be had, the check records what the model does (a ratchet) and says so in its id: the squat's lean and shank at the top, the low bar's elbow above the wrist, the
+Where a reference figure cannot be held, the check records what the model does and says so in its id ("recorded"): the squat's lean and shank at the top, the low bar's upper arm along the ribs, the
 bar behind the torso axis, the middle step of the walkout, the deadlift's bar to the hip-knee line, the sumo's shin and back angle, the close grip's flare and elbow angle.
 
 Headline numbers, two reps: squat peak bar speed 0.65 (low) and 0.66 m/s (high); bench 0.77 and 0.80; deadlift 0.72 and 0.66; planted feet move 0.00 cm in the reps (heel and toe at 0 mm);
@@ -50,15 +51,15 @@ no joint moves more than 1 cm in 1/240 s anywhere; bar over the midfoot to 0.0 c
 
 ## What is still weak
 
-- **The squat's top is a quarter squat to a coach's eye**: lean 11.5 degrees (low bar) and 9.5 (high bar), shank about 10, knee about 173, pelvis 10 cm ahead of the ankle. The coaches asked for lean 6 to 8,
-  shank at most 6 and a knee of 176 to 178. The brief's rule that the bar stays over the midfoot, with the bar 0.126 m behind the torso axis (the drawn ribs are 0.118 m wide and the bar must clear
-  them by a centimetre), puts the pelvis there; a lean of 8 degrees puts it further ahead, not nearer. Letting the bar ride 2 cm behind the midfoot at the top helped by about a degree of shank and
-  made the knee jump (bar acceleration 94 m/s2), so it was dropped; straighter legs (reach 0.9994) turn a millimetre of hip height into a large swing of the knee (the knee's acceleration is 69 m/s2
+- **The squat's top is short of upright**: lean 11.5 degrees (low bar) and 9.5 (high bar), shank about 10, knee about 173, pelvis 10 cm ahead of the ankle. The reference figures are lean 6 to 8,
+  shank at most 6 and a knee of 176 to 178. The rule that the bar stays over the midfoot, with the bar 0.126 m behind the torso axis (the drawn ribs are 0.118 m wide and the bar must clear
+  them by a centimetre), puts the pelvis there; a lean of 8 degrees puts it further ahead, not nearer. A bar 2 cm behind the midfoot at the top would gain about a degree of shank and
+  make the knee jump (bar acceleration 94 m/s2), and straighter legs (reach 0.9994) turn a millimetre of hip height into a large swing of the knee (the knee's acceleration is 69 m/s2
   against the 25 allowed). A real lifter has thinner ribs, a bar closer to the spine, or a bar behind the midfoot.
-- **The let go still swings the low bar's elbow back 5 cm** past where the grip had it, and the high bar's forearm swings forward 0.16 m: the two ways an arm can drop from a bar.
+- **In the let go the forearms pass through level, out to the sides**, before the arms hang, and the high bar's forearm swings forward 0.16 m: an arm that drops from a bar has to turn over somewhere.
 - **The squat's sticking region and the bench's are shapes, not physics**: the model does not know the load.
 - **A 5-rep set and a 30-rep set have the same grind curve** (the square of the place in the set).
 - The walk-up of the deadlift starts 1.06 m (sumo 0.96) left of the bar, standing, 0.2 s; the stage keeps 10 px of air to the left of it.
-- The deadlift's approach is 4.7 s before rep 1 for the conventional, a little over the coach's 4.5.
-- The eight-rep squat takes 32 s (the coach's 28 to 31 plus the grind).
+- The deadlift's approach is 4.7 s before rep 1 for the conventional, a little over the reference 4.5.
+- The eight-rep squat takes 32 s (the reference 28 to 31 plus the grind).
 - The mannequin's thighs are drawn 0.092 m thick: arms clear them by 14 cm or more (squat) and 26 cm (bench), but a hand at the hip is close to the drawn thigh.

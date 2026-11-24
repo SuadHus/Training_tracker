@@ -63,6 +63,8 @@ const samePicture = new Set([
 ]);
 /** Counts and tempos: 3, 2ct, 3s, 5x5. */
 const figure = /^\d+(?:ct|s|sec|x\d+)?$/;
+/** A fraction or a decimal ("1 1/2 squat", "squat 1.5", "1½"): a different movement, which a count or a tempo is not. */
+const fractional = /\d\s*\/\s*\d|\d\.\d|[\u00bc-\u00be\u2150-\u215f]/;
 
 /** Remove every run of `phrase` from `words`; say whether there was one. */
 function take(words: string[], phrase: readonly string[]): boolean {
@@ -83,7 +85,7 @@ function take(words: string[], phrase: readonly string[]): boolean {
  * name leaves any doubt. Only barbell exercises are lifts.
  */
 export function liftKind(exercise: { name: string; equipment: Equipment }): LiftKind | null {
-  if (exercise.equipment !== "barbell") return null;
+  if (exercise.equipment !== "barbell" || fractional.test(exercise.name)) return null;
   const words = exercise.name.toLowerCase().replace(/\bt\s*&\s*g\b/g, "tng")
     .split(/[^a-z0-9]+/).filter(Boolean).flatMap((word) => shorthand[word] ?? [word]);
 

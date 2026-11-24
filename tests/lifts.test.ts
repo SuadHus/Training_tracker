@@ -69,6 +69,13 @@ test("another lift is never drawn as one of the six", () => {
   ]);
 });
 
+test("a count or tempo is let through, but a fraction or a decimal, which names another movement, is not drawn", () => {
+  each("squat-high", ["Squat 3s", "Squat 5x5", "3 sec paused squat"]);
+  each(null, [
+    "1 1/2 squat", "1 1/4 squat", "Squat 1.5", "Bench 1 1/4", "Deadlift 1 1/2", "Bench press 1 / 2", "Squat 1\u00bd", "Squat \u00be", "Squat 3/1/1",
+  ]);
+});
+
 test("a name that asks for two lifts at once is not drawn", () => {
   each(null, ["Low bar high bar squat", "Sumo conventional deadlift", "Squat and bench", "Bench deadlift", "Squat deadlift"]);
 });

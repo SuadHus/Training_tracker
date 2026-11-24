@@ -7,6 +7,7 @@ import { makeLiftSet } from "@/src/lib/lift-motion";
 import { stageFor } from "@/src/lib/lift-plan";
 import { altText, counterOf, countedPlates, drawnReps, LONG_STACK, platesOf, shortName, squareClasses, type MainLift } from "@/src/lib/lift-row";
 import { buttonWord, initialTransport } from "@/src/lib/lift-transport";
+import type { LiftKind } from "@/src/lib/lifts";
 import { formatNumber, STANDARD_BAR_KG } from "@/src/lib/workout-doc";
 import { perSide } from "./bar-load";
 import { startPlayer, type Player, type Readout } from "./lift-player";
@@ -49,6 +50,25 @@ const Drawing = memo(function Drawing({ lift, size, svgRef }: DrawingProps) {
 const sameReadout = (a: Readout, b: Readout) =>
   a.word === b.word && a.counter.shown === b.counter.shown && a.counter.done === b.counter.done && a.counter.phase === b.counter.phase;
 
+/**
+ * What the set is, as a set reads everywhere. Every lift of the week has its caption, stacked in one grid cell and only the chosen one
+ * seen and read out, so that the row is as tall as the tallest caption whatever the names are, and nothing moves when the lift changes.
+ */
+function Caption({ lift, shown }: { lift: MainLift; shown: boolean }) {
+  const { exercise, loadKg, barKg, reps, rpe, day } = lift;
+  const plates = platesOf(lift);
+  const line = plates.length > LONG_STACK ? countedPlates(plates) : perSide(loadKg, barKg);
+  return (
+    <p className="lift-caption" aria-hidden={shown ? undefined : true}>
+      <span className="soft">{exercise}</span>{" "}
+      <Notation measures={{ reps, load: loadKg, rpe, duration: null, distance: null }} />, {day}
+      <br />
+      <span className="soft">per side</span> <b>{line}</b>
+      {barKg !== STANDARD_BAR_KG && <> <span className="soft">on a {formatNumber(barKg)} kg bar</span></>}
+    </p>
+  );
+}
+
 /** The lifts of the week, heaviest first, one drawn at a time: tabs to choose, the caption, the lifter, a button and the rep counter. */
 export function LiftStage({ lifts }: { lifts: MainLift[] }) {
   const [kind, setKind] = useState(lifts[0].kind);
@@ -58,18 +78,18 @@ export function LiftStage({ lifts }: { lifts: MainLift[] }) {
   const wide = useRef<SVGSVGElement>(null);
   const narrow = useRef<SVGSVGElement>(null);
   const player = useRef<Player | null>(null);
-  // A lift the reader chose plays at once; the one the page opens on waits until it scrolls into view.
-  const chosen = useRef(false);
+  // The lift the reader chose plays at once; the one the page opens on waits until it scrolls into view. It is the kind that is kept, not a
+  // flag: when new lifts arrive without the chosen one, the drawing that follows is not the reader's choice.
+  const chosen = useRef<LiftKind | null>(null);
 
-  const { exercise, loadKg, barKg, reps, rpe, day } = lift;
   const identity = drawingKey(lift);
   useEffect(() => {
     if (!figure.current || !wide.current || !narrow.current) return;
     const playing = startPlayer(figure.current, { wide: wide.current, narrow: narrow.current }, lift, {
-      playAtOnce: chosen.current,
+      playAtOnce: chosen.current === lift.kind,
       onReadout: (next) => setReadout((held) => (sameReadout(held, next) ? held : next)),
     });
-    chosen.current = false;
+    chosen.current = null;
     player.current = playing.player;
     return () => {
       player.current = null;
@@ -79,17 +99,15 @@ export function LiftStage({ lifts }: { lifts: MainLift[] }) {
   }, [identity]);
 
   const choose = (next: MainLift) => {
-    if (next.kind === kind) {
+    // Against the lift on show, which is not `kind` when new lifts arrived without it.
+    if (next.kind === lift.kind) {
       player.current?.replay();
       return;
     }
-    chosen.current = true;
+    chosen.current = next.kind;
     setKind(next.kind);
     setReadout(restingReadout(next));
   };
-
-  const plates = platesOf(lift);
-  const line = plates.length > LONG_STACK ? countedPlates(plates) : perSide(loadKg, barKg);
 
   return (
     <div className="lift">
@@ -105,13 +123,9 @@ export function LiftStage({ lifts }: { lifts: MainLift[] }) {
           ))}
         </ul>
       )}
-      <p className="lift-caption">
-        <span className="soft">{exercise}</span>{" "}
-        <Notation measures={{ reps, load: loadKg, rpe, duration: null, distance: null }} />, {day}
-        <br />
-        <span className="soft">per side</span> <b>{line}</b>
-        {barKg !== STANDARD_BAR_KG && <> <span className="soft">on a {formatNumber(barKg)} kg bar</span></>}
-      </p>
+      <div className="lift-captions">
+        {lifts.map((option) => <Caption key={option.kind} lift={option} shown={option.kind === lift.kind} />)}
+      </div>
       <div className="lift-figure" ref={figure}>
         <Drawing key={`${identity}|wide`} lift={lift} size="wide" svgRef={wide} />
         <Drawing key={`${identity}|narrow`} lift={lift} size="narrow" svgRef={narrow} />

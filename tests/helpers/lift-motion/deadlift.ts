@@ -1,4 +1,4 @@
-// The deadlift coach's targets, one Check each.
+// The reference targets for the deadlift, one Check each.
 import * as M from "./measure";
 import { maxOver, minOver } from "./util";
 import { type Check, getSet } from "./check";
@@ -6,8 +6,8 @@ import type { LiftPose } from "../../../src/lib/lift-pose";
 
 const back = (p: LiftPose) => M.deg(Math.atan2(p.chest[1] - p.pelvis[1], Math.abs(p.chest[0] - p.pelvis[0])));
 
-export type DeadStart = { p: LiftPose; t: number; back: number; hip: number; knee: number; shin: number; shoulderAhead: number; heels: number; toeOut: number; hands: number; handMinusKnee: number };
-export function deadStart(kind: "deadlift-conventional" | "deadlift-sumo"): DeadStart {
+type DeadStart = { p: LiftPose; t: number; back: number; hip: number; knee: number; shin: number; shoulderAhead: number; heels: number; toeOut: number; hands: number; handMinusKnee: number };
+function deadStart(kind: "deadlift-conventional" | "deadlift-sumo"): DeadStart {
   const set = getSet(kind, 2);
   const s = M.sample(set);
   const t = M.leaveFloorTime(s)!;
@@ -20,7 +20,7 @@ export function deadStart(kind: "deadlift-conventional" | "deadlift-sumo"): Dead
   };
 }
 
-export function deadChecks(kind: "deadlift-conventional" | "deadlift-sumo"): Check[] {
+function deadChecks(kind: "deadlift-conventional" | "deadlift-sumo"): Check[] {
   const sumo = kind === "deadlift-sumo";
   const set = getSet(kind, 2);
   const s = M.sample(set);
@@ -83,8 +83,8 @@ export function deadChecks(kind: "deadlift-conventional" | "deadlift-sumo"): Che
   c("pull: closest bar to thigh, side view (m)", thigh, 0.08, 1);
   c("pull: no leg segment through the bar centre, side view (m)", closest, 0.0005, 1);
   thighLock = M.both((sd) => M.distToSeg2(pTop.bar, pTop.hip[sd], pTop.knee[sd])[0]);
-  // the coach's 0.085-0.105 is shorter than the mannequin allows: a drawn thigh (0.092) and the bar (0.0145) touch at 0.1065 between axes. Widened to 0.11 (conventional) and 0.13 (sumo: the fists must also clear the thighs, 0.092 + 0.04): docs/lift-motion.md
-  c("lockout: bar to the hip-knee line (m); the coach's 0.085-0.105 widened, docs/lift-motion.md", thighLock, 0.085, sumo ? 0.13 : 0.11);
+  // the reference 0.085-0.105 is shorter than the mannequin allows: a drawn thigh (0.092) and the bar (0.0145) touch at 0.1065 between axes. Widened to 0.11 (conventional) and 0.13 (sumo: the fists must also clear the thighs, 0.092 + 0.04): docs/lift-motion.md
+  c("lockout: bar to the hip-knee line (m); the reference 0.085-0.105 widened, docs/lift-motion.md", thighLock, 0.085, sumo ? 0.13 : 0.11);
 
   // ---- lockout
   c("lockout: knee angle (deg)", M.both((sd) => M.kneeAngle(pTop, sd)), 172, 178.9);
@@ -153,12 +153,12 @@ export function deadChecks(kind: "deadlift-conventional" | "deadlift-sumo"): Che
   const swing = M.both((sd) => { let lo = 1e9, hi = -1e9; for (let i = 0; i < iG; i++) { const q = s.poses[i]; const a = M.deg(Math.atan2(q.hand[sd][0] - q.shoulder[sd][0], q.shoulder[sd][1] - q.hand[sd][1])); lo = Math.min(lo, a); hi = Math.max(hi, a); } return hi - lo; });
   c("approach: arm swing peak to peak (deg)", swing, 30, 40);
   c("approach: first frame to the hands taking the bar (s)", tG, sumo ? 3.5 : 3.5, sumo ? 5.5 : 4.5);
-  c("approach: time before rep 1 (s): the coach's 4.0-4.5 conventional and 4.8-5.5 sumo, the conventional 0.3 s over for the slower hinge the coach asked for", r1.start, sumo ? 4.8 : 4.0, sumo ? 5.5 : 4.8);
+  c("approach: time before rep 1 (s): the reference 4.0-4.5 conventional and 4.8-5.5 sumo, the conventional 0.3 s over for the slower hinge the reference asks for", r1.start, sumo ? 4.8 : 4.0, sumo ? 5.5 : 4.8);
   let still0 = 0;
   for (let i = 0; i < s.poses.length; i++) if (M.dist(s.poses[i].ankle.R, s.poses[0].ankle.R) > 0.001 || M.dist(s.poses[i].ankle.L, s.poses[0].ankle.L) > 0.001) { still0 = s.times[i]; break; }
   c("approach: opening stand-still (s)", still0, 0.15, 0.3);
   const grip = s.seg("grip")!;
-  c("approach: hinge, grip and slack out (s): the coach wants the hinge no quicker than the pull", grip.end - grip.start, 1.3, 1.8);
+  c("approach: hinge, grip and slack out (s): the hinge is no quicker than the pull", grip.end - grip.start, 1.3, 1.8);
   // hips dropping 1-3 cm and no bounce during the slack
   const slack = (() => { const a = s.idx(tG), b = s.idx(r1.start); let lo = 9, hi = -9; for (let i = a; i <= b; i++) { lo = Math.min(lo, s.poses[i].pelvis[1]); hi = Math.max(hi, s.poses[i].pelvis[1]); } return { drop: s.poses[a].pelvis[1] - s.poses[b].pelvis[1], range: hi - lo }; })();
   c("slack: hips drop between the grip and the pull (m)", slack.drop, 0.01, 0.03);
@@ -197,7 +197,7 @@ export function deadPairChecks(): Check[] {
   return out;
 }
 
-export function deadliftApproach(kind: "deadlift-conventional" | "deadlift-sumo"): Check[] {
+function deadliftApproach(kind: "deadlift-conventional" | "deadlift-sumo"): Check[] {
   const set = getSet(kind, 2);
   const s = M.sample(set);
   const out: Check[] = [];
@@ -223,7 +223,7 @@ export function deadliftApproach(kind: "deadlift-conventional" | "deadlift-sumo"
     c("approach: worst joint step in 1/240 s (cm)", M.maxJump(s, 0, iG).cm, 0, 0.8);
     const fe = M.footEvents(s, 0, iG);
     const durs = fe.steps.map((x) => x.dur);
-    c("approach: step durations differ by (s); the sumo's two steps out to the wide stance take 15% longer (round 5: the knee at the wide landing)", maxOver(durs) - minOver(durs), 0, sumo ? 0.08 : 0.03);
+    c("approach: step durations differ by (s); the sumo's two steps out to the wide stance take 15% longer (the knee at the wide landing)", maxOver(durs) - minOver(durs), 0, sumo ? 0.08 : 0.03);
     c("approach: knee acceleration (m/s2)", maxOver(["R", "L"].map((sd) => M.peaks(s.poses.map((p) => p.knee[sd as "R" | "L"]), 2, iG).accel)), 0, 250);
     // ---- nothing through anything
     const free = (i: number) => i % 2 === 0 && !s.poses[i].gripping;
@@ -240,12 +240,12 @@ export function deadliftApproach(kind: "deadlift-conventional" | "deadlift-sumo"
     for (let i = 0; i < s.poses.length; i += 6) { const g = M.armToDrawnTrunk(s.poses[i]); worst = Math.min(worst, g.hand, g.forearm, g.elbow); }
     c("hands, forearms and elbows against the drawn torso (gap, m)", worst, -0.005, 9);
     c("pull: closest bar to shin, axis distance, 3D (m): between 6 and 8 cm", minOver(s.poses.slice(s.idx(r1.start), s.idx(r1.end)).flatMap((p) => M.SIDES.map((sd) => M.distToSeg2(p.bar, p.ankle[sd], p.knee[sd])[0]))), 0.06, 0.08);
-    c("lockout: hold within 1 cm of the top (s): the coach's 0.5-0.7, centred", (() => { const t = M.extremeTime(s, r1.start, r1.end, "max"), i = s.idx(t), y = s.poses[i].bar[1]; let a = i, b = i; while (a > iR1 && Math.abs(s.poses[a - 1].bar[1] - y) < 0.01) a--; while (b < iRL && Math.abs(s.poses[b + 1].bar[1] - y) < 0.01) b++; return (b - a + 1) / M.HZ; })(), 0.5, 0.65);
+    c("lockout: hold within 1 cm of the top (s): the reference 0.5-0.7, centred", (() => { const t = M.extremeTime(s, r1.start, r1.end, "max"), i = s.idx(t), y = s.poses[i].bar[1]; let a = i, b = i; while (a > iR1 && Math.abs(s.poses[a - 1].bar[1] - y) < 0.01) a--; while (b < iRL && Math.abs(s.poses[b + 1].bar[1] - y) < 0.01) b++; return (b - a + 1) / M.HZ; })(), 0.5, 0.65);
     void lg;
   return out;
 }
 
-export function deadliftLockout(kind: "deadlift-conventional" | "deadlift-sumo"): Check[] {
+function deadliftLockout(kind: "deadlift-conventional" | "deadlift-sumo"): Check[] {
   const set = getSet(kind, 2);
   const s = M.sample(set);
   const out: Check[] = [];
@@ -256,7 +256,7 @@ export function deadliftLockout(kind: "deadlift-conventional" | "deadlift-sumo")
     // ---- the fists and forearms clear of the thighs and the trunk at lockout (the hull and the union of the drawn capsules)
     {
       const g = M.limbGaps(s, iTop, iTop, () => true);
-      c("lockout: fist to the drawn thigh (m; was -0.022 on the sumo)", g.handThigh, 0, 9);
+      c("lockout: fist to the drawn thigh (m)", g.handThigh, 0, 9);
       c("lockout: forearm to the drawn thigh (m)", g.forearmThigh, 0.005, 9);
       const u = M.armsToTrunkUnion(s.poses[iTop]);
       c("lockout: forearm to the drawn trunk as the union of its capsules, hips included (m)", u.forearm, 0.002, 9);
@@ -264,27 +264,27 @@ export function deadliftLockout(kind: "deadlift-conventional" | "deadlift-sumo")
       const T = M.drawnTorso(s.poses[iTop]);
       let hip = 9;
       for (const sd of M.SIDES) for (let k = 0; k <= 10; k++) { const pt = M.add(s.poses[iTop].elbow[sd], M.mul(M.sub(s.poses[iTop].wrist[sd], s.poses[iTop].elbow[sd]), k / 10)); hip = Math.min(hip, M.hullSigned(pt, T.lower) - 0.042); }
-      c("lockout: forearm to the drawn lower trunk hull, hips included (m; was -0.037 on the sumo)", hip, 0.002, 9);
+      c("lockout: forearm to the drawn lower trunk hull, hips included (m)", hip, 0.002, 9);
     }
     // ---- the free arm while walking up: forearm and hand clear of the drawn trunk (swing 1-2 cm further out)
     {
       let fore = 9, hand = 9;
       for (let i = 0; i < s.poses.length; i += 2) { if (s.poses[i].gripping) continue; const g = M.armsToTrunkUnion(s.poses[i]); fore = Math.min(fore, g.forearm); hand = Math.min(hand, g.hand); }
-      c("free arm: forearm to the drawn trunk (union of capsules), worst over the set (m; was -0.026 at the swing back of the walk up)", fore, 0.01, 9);
+      c("free arm: forearm to the drawn trunk (union of capsules), worst over the set (m)", fore, 0.01, 9);
       c("free arm: fist to the drawn trunk, worst over the set (m)", hand, 0.02, 9);
     }
     // ---- no snap anywhere: the pelvis and the knees ease into the lowering and into every toe-off
     {
       const P = s.poses.map((p) => p.pelvis);
-      c("pelvis acceleration over the whole set (m/s2; was 150 at the start of the lowering)", M.peaks(P, 2, P.length - 3).accel, 0, 40);
-      c("pelvis jerk over the whole set (m/s3; was 15.3k)", M.peaks(P, 2, P.length - 3).jerk, 0, 25000);
+      c("pelvis acceleration over the whole set (m/s2)", M.peaks(P, 2, P.length - 3).accel, 0, 40);
+      c("pelvis jerk over the whole set (m/s3)", M.peaks(P, 2, P.length - 3).jerk, 0, 25000);
       const grip = s.seg("grip")!;
       const iG = s.idx(grip.start);
-      c("approach: knee acceleration (m/s2; was 147 at the sumo toe-off, 102 on the conventional)", maxOver(M.SIDES.map((sd) => M.peaks(s.poses.map((p) => p.knee[sd]), 2, iG).accel)), 0, 100);
+      c("approach: knee acceleration (m/s2)", maxOver(M.SIDES.map((sd) => M.peaks(s.poses.map((p) => p.knee[sd]), 2, iG).accel)), 0, 100);
       // the lowering: the hips start from rest and ease into the hinge (the hips' position is the square root of the bar's height below the top: a table coarse near the top made it a snap)
       const holdEnd = (() => { let i = iTop; const y = s.poses[iTop].bar[1]; while (i < iRL && Math.abs(s.poses[i].bar[1] - y) < 0.0005) i++; return i; })();
       const acc = (i: number) => M.len(M.add(M.sub(s.poses[i + 1].pelvis, M.mul(s.poses[i].pelvis, 2)), s.poses[i - 1].pelvis)) * M.HZ * M.HZ;
-      c("lowering: largest pelvis acceleration from 0.15 s before the bar leaves the top to 0.5 s after (m/s2; was 150)", maxOver(Array.from({ length: Math.round(0.65 * M.HZ) }, (_, k) => acc(holdEnd - Math.round(0.15 * M.HZ) + k))), 0, 30);
+      c("lowering: largest pelvis acceleration from 0.15 s before the bar leaves the top to 0.5 s after (m/s2)", maxOver(Array.from({ length: Math.round(0.65 * M.HZ) }, (_, k) => acc(holdEnd - Math.round(0.15 * M.HZ) + k))), 0, 30);
       const sp = (i: number) => M.dist(s.poses[i].pelvis, s.poses[i - 1].pelvis) * M.HZ;
       c("lowering: largest rise of the pelvis speed in one 1/240 s step, from 0.15 s before the bar leaves the top to 0.5 s after (m/s)", maxOver(Array.from({ length: Math.round(0.65 * M.HZ) }, (_, k) => sp(holdEnd - Math.round(0.15 * M.HZ) + k + 1) - sp(holdEnd - Math.round(0.15 * M.HZ) + k))), 0, 0.15);
     }
@@ -292,15 +292,15 @@ export function deadliftLockout(kind: "deadlift-conventional" | "deadlift-sumo")
     {
       const bar = s.poses.map((p) => p.bar), bs = M.speedSeries(bar), rt = M.repTiming(s, 1, true);
       const t0 = (() => { for (let i = s.idx(M.leaveFloorTime(s)!); i > rt.i0; i--) if (s.poses[i].bar[1] <= s.poses[rt.i0].bar[1] + 0.0005) return i; return rt.i0; })();
-      c("bar speed 0.1 s after lift-off with margin under the 0.25 cap (m/s; was 0.2500 on the conventional)", bs[t0 + 24], 0, 0.23);
+      c("bar speed 0.1 s after lift-off with margin under the 0.25 cap (m/s)", bs[t0 + 24], 0, 0.23);
       const gg = M.limbGaps(s, iR1, iRL, (i) => i % 2 === 0);
-      c("bar to the drawn shin and calf, the closest in the pull (m; was -0.003 on the conventional): the bar does not enter the leg", gg.barShin, 0, 9);
+      c("bar to the drawn shin and calf, the closest in the pull (m): the bar does not enter the leg", gg.barShin, 0, 9);
       c("bar to the drawn thigh, the closest in the pull and at lockout (m)", gg.barThigh, -0.0005, 9);
     }
   return out;
 }
 
-export function deadliftPullAndWalkUp(kind: "deadlift-conventional" | "deadlift-sumo"): Check[] {
+function deadliftPullAndWalkUp(kind: "deadlift-conventional" | "deadlift-sumo"): Check[] {
   const set = getSet(kind, 2);
   const s = M.sample(set);
   const out: Check[] = [];
@@ -313,46 +313,46 @@ export function deadliftPullAndWalkUp(kind: "deadlift-conventional" | "deadlift-
     {
       let pk = 0;
       for (let i = rt.m0; i < rt.a; i++) pk = Math.max(pk, bs[i]);
-      c("peak bar speed over the whole rep, lowering included (m/s; was 0.802 on the conventional lowering)", pk, 0, 0.74);
+      c("peak bar speed over the whole rep, lowering included (m/s)", pk, 0, 0.74);
     }
     // ---- the lead and the first 0.1 s, however the instant the bar leaves the floor is taken (0.5 mm to 1 cm)
     {
       const y0 = s.poses[rt.i0].bar[1];
       const leave = (th: number) => { let i = rt.i0; while (i < rt.i1 && s.poses[i].bar[1] <= y0 + th) i++; return i; };
-      c("lead, bar 2 mm off the floor (s): centred in the coach's 0.15-0.25 (was 0.154 and 0.163)", (leave(0.002) - rt.i0) / M.HZ, 0.17, 0.2);
+      c("lead, bar 2 mm off the floor (s): centred in the reference 0.15-0.25", (leave(0.002) - rt.i0) / M.HZ, 0.17, 0.2);
       c("lead, bar 1 mm off the floor (s)", (leave(0.001) - rt.i0) / M.HZ, 0.15, 0.25);
       c("lead, bar 1 cm off the floor (s)", (leave(0.01) - rt.i0) / M.HZ, 0.15, 0.246);
-      for (const th of [0.002, 0.005]) c(`bar speed 0.1 s after it is ${th * 1000} mm off the floor, with margin under the 0.25 cap (m/s; was 0.25 on the conventional)`, bs[leave(th) + 24], 0, 0.23);
-      c("pull stays inside the coach's 1.3-1.6 s with room (s)", rt.first, 1.31, 1.6);
-      c("rep total inside the coach's 3.1-3.6 s with room (s)", rt.rep, 3.1, 3.59);
+      for (const th of [0.002, 0.005]) c(`bar speed 0.1 s after it is ${th * 1000} mm off the floor, with margin under the 0.25 cap (m/s)`, bs[leave(th) + 24], 0, 0.23);
+      c("pull stays inside the reference 1.3-1.6 s with room (s)", rt.first, 1.31, 1.6);
+      c("rep total inside the reference 3.1-3.6 s with room (s)", rt.rep, 3.1, 3.59);
     }
     // ---- the walk-up: step time, arm swing by the wrist as well as by the hand, the knee at the wide landing, the largest frame step
     {
       const fe = M.footEvents(s, 0, iG);
       const alt = (h: number) => { const ds: number[] = []; for (const sd of M.SIDES) { let run = 0; for (let i = 0; i <= iG; i++) { if (s.poses[i].ankle[sd][1] > 0.08 + h) run++; else if (run) { ds.push(run / M.HZ); run = 0; } } } return ds; };
       const d1 = alt(0.01);
-      c("approach: steps by the time the ankle is more than 1 cm off the floor, the shortest (s); the coach's 0.42-0.48 (was 0.40-0.42 by this measure)", minOver(d1), 0.42, 1);
+      c("approach: steps by the time the ankle is more than 1 cm off the floor, the shortest (s); the reference 0.42-0.48", minOver(d1), 0.42, 1);
       c("approach: steps by the time the ankle is more than 1 cm off the floor, the mean (s)", M.mean(d1), 0.43, 0.5);
       const sw = (f: (p: any, sd: M.Side) => readonly number[]) => maxOver(M.SIDES.map((sd) => { let lo = 1e9, hi = -1e9; for (let i = 0; i < iG; i++) { const q = s.poses[i]; const w = f(q, sd); const a = M.deg(Math.atan2(w[0] - q.shoulder[sd][0], q.shoulder[sd][1] - w[1])); lo = Math.min(lo, a); hi = Math.max(hi, a); } return hi - lo; }));
-      c("approach: arm swing peak to peak by the wrist, the larger arm (deg): the coach's 30-40, off the ceiling (was 40.0 conventional and 41.4 sumo)", sw((q, sd) => q.wrist[sd]), 30, 38.9);
+      c("approach: arm swing peak to peak by the wrist, the larger arm (deg): the reference 30-40, off the ceiling", sw((q, sd) => q.wrist[sd]), 30, 38.9);
       c("approach: arm swing peak to peak by the hand, the larger arm (deg)", sw((q, sd) => q.hand[sd]), 30.5, 40);
       let knee = 0, step = 0;
       for (const sd of M.SIDES) knee = Math.max(knee, M.peaks(s.poses.map((q) => q.knee[sd]), 2, iG).accel);
       for (let i = 1; i <= iG; i++) for (const sd of M.SIDES) for (const j of ["knee", "wrist", "hand"] as const) step = Math.max(step, M.dist(s.poses[i][j][sd], s.poses[i - 1][j][sd]) * 100);
-      c("approach: knee acceleration (m/s2; was 93.5 at the wide landing on the sumo and 55 conventional)", knee, 0, 45);
-      c("approach: largest step of a knee, wrist or hand in 1/240 s (cm; was 0.79)", step, 0, 0.75);
+      c("approach: knee acceleration (m/s2)", knee, 0, 45);
+      c("approach: largest step of a knee, wrist or hand in 1/240 s (cm)", step, 0, 0.75);
       void fe;
     }
     // ---- recorded: the numbers the drawn mannequin forbids (docs/lift-motion.md)
     {
       const d = deadStart(kind as "deadlift-conventional" | "deadlift-sumo"), p = d.p, tTop = M.extremeTime(s, r1.start, r1.end, "max"), pT = set.pose(tTop);
-      c("recorded: lockout, bar to the hip-knee line (m); the coach's 0.085-0.105 against a drawn thigh 0.092 + bar 0.0145" + (sumo ? " + fists 0.04" : ""), M.both((sd) => M.distToSeg2(pT.bar, pT.hip[sd], pT.knee[sd])[0]), 0.1, sumo ? 0.1285 : 0.1075);
+      c("recorded: lockout, bar to the hip-knee line (m); the reference 0.085-0.105 against a drawn thigh 0.092 + bar 0.0145" + (sumo ? " + fists 0.04" : ""), M.both((sd) => M.distToSeg2(pT.bar, pT.hip[sd], pT.knee[sd])[0]), 0.1, sumo ? 0.1285 : 0.1075);
       if (!sumo) {
         c("recorded: conventional, bar ahead of the ankle at lift-off (m): the bar stands off the shin for the drawn calf (radius 0.064)", p.bar[0] - M.mean(M.SIDES.map((sd) => p.ankle[sd][0])), 0.115, 0.135);
         c("recorded: conventional, shin from vertical at lift-off (deg)", d.shin, 14, 17.5);
       } else {
-        c("recorded: sumo, back angle at lift-off (deg); the verifier asked 59-60: more back angle puts the shin past 8 deg or the bar into the calf", d.back, 56.5, 60);
-        c("recorded: sumo, shin from vertical at lift-off (deg), inside the coach's 0-8", d.shin, 0, 8);
+        c("recorded: sumo, back angle at lift-off (deg); the reference asks 59-60: more back angle puts the shin past 8 deg or the bar into the calf", d.back, 56.5, 60);
+        c("recorded: sumo, shin from vertical at lift-off (deg), inside the reference 0-8", d.shin, 0, 8);
       }
     }
   return out;

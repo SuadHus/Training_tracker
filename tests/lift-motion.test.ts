@@ -1,8 +1,9 @@
-// The motion model of the six lifts: the targets of the lifting coaches as assertions, the invariants of a lifter, and a table of
+// The motion model of the six lifts: the reference targets for each lift as assertions, the invariants of a lifter, and a table of
 // deliberate mutations, each of which must make the suite fail.
 //
 //   tsx --test tests/lift-motion.test.ts                       the targets and invariants (seconds)
 //   LIFT_MUTATIONS=1 tsx --test tests/lift-motion.test.ts      and the mutation table (minutes: every mutation reruns the suite)
+//   MUTATION_REPORT=1 with it                                  prints, for each mutation, how many checks it breaks and the first three
 //
 // What "lean" or "double support" means is in `helpers/lift-motion/measure.ts`; the targets are in `squat.ts`, `bench.ts`,
 // `deadlift.ts`, `general.ts` and `pairs.ts` beside it.
@@ -11,7 +12,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildLiftSet, LIFT_TABLES, makeLiftSet } from "../src/lib/lift-motion";
 import type { LiftSet } from "../src/lib/lift-set";
-import { LIFT_KINDS, type LiftKind } from "../src/lib/lifts";
+import { LIFT_KINDS, liftFamily, type LiftKind } from "../src/lib/lifts";
 import type { LiftPose } from "../src/lib/lift-pose";
 import * as M from "./helpers/lift-motion/measure";
 import { passes, show, source, type Check } from "./helpers/lift-motion/check";
@@ -22,7 +23,6 @@ import { pairChecks } from "./helpers/lift-motion/pairs";
 import { squatSuite } from "./helpers/lift-motion/squat";
 
 const KINDS = LIFT_KINDS;
-const familyOf = (k: LiftKind) => (k.startsWith("squat") ? "squat" : k.startsWith("bench") ? "bench" : "deadlift");
 
 function familyChecks(kind: LiftKind): Check[] {
   if (kind === "squat-low" || kind === "squat-high") return squatSuite(kind);
@@ -31,7 +31,7 @@ function familyChecks(kind: LiftKind): Check[] {
 }
 const suite = (kind: LiftKind): Check[] => [...familyChecks(kind), ...generalChecks(kind), ...jointSmoothness(kind)];
 
-// ------------------------------------------------------------------------------------------------ the coaches' targets
+// ------------------------------------------------------------------------------------------------ the reference targets
 for (const kind of KINDS) {
   for (const check of suite(kind)) {
     test(check.id, () => assert.ok(passes(check), show(check)));
@@ -78,7 +78,7 @@ test("the timeline has one segment per rep, named rep 1 .. rep n, contiguous wit
   }
 });
 
-test("the set starts at the rack (or at the bar) and ends the way the coaches asked", () => {
+test("the set starts at the rack (or at the bar) and ends the way the reference asks", () => {
   const names = (k: LiftKind) => makeLiftSet(k, { reps: 2 }).timeline.map((s) => s.name).filter((n) => !/^rep /.test(n));
   assert.deepEqual(names("squat-low"), ["under the bar", "unrack", "walkout", "settle", "walk in", "rack", "let go", "step out"]);
   assert.deepEqual(names("squat-high"), names("squat-low"));
@@ -97,7 +97,7 @@ test("phase(t) answers with a quiet word for every instant, also outside the set
       assert.match(word, /^([a-z-]+( [a-z-]+)?|on the floor)$/);
       seen.add(word);
     }
-    for (const needed of familyOf(kind) === "squat" ? ["walkout", "descent", "bottom", "ascent", "lockout"] : familyOf(kind) === "bench" ? ["descent", "touch", "press", "lockout"] : ["pull", "hold", "lowering", "on the floor"]) {
+    for (const needed of liftFamily(kind) === "squat" ? ["walkout", "descent", "bottom", "ascent", "lockout"] : liftFamily(kind) === "bench" ? ["descent", "touch", "press", "lockout"] : ["pull", "hold", "lowering", "on the floor"]) {
       assert.ok(seen.has(needed), `${kind} says "${needed}"`);
     }
   }
@@ -162,7 +162,7 @@ test("the scene matches the poses: the bar in the hooks, on the floor, the bench
   for (const kind of KINDS) {
     const set = makeLiftSet(kind, { reps: 2 });
     const p0 = set.pose(0), pE = set.pose(set.duration), sc = set.scene;
-    assert.equal(sc.family, familyOf(kind));
+    assert.equal(sc.family, liftFamily(kind));
     if (sc.family === "deadlift") {
       assert.equal(sc.rack, null); assert.equal(sc.bench, null);
       assert.ok(sc.barRestY !== null && Math.abs(sc.barRestY - p0.bar[1]) < 1e-9 && Math.abs(sc.barRestY - pE.bar[1]) < 1e-9);
@@ -406,7 +406,7 @@ const MUTATIONS: Mutation[] = [
     name: "the pelvis shivers 4 mm at 25 Hz through the reps", kinds: ["squat-low", "squat-high"],
     pose: (p, t, set) => { if (inReps(set, t)) shiftBody(p, 0, 0.004 * Math.sin(t * 157)); },
   },
-  // ---- one for every defect of the second verification
+  // ---- the squat's rack, knee, stop and release; the bench's contact and ending; the deadlift's lowering, bar and walk-up
   {
     name: "a squatter who stands up at the rack while the bar is still in the hooks behind him", kinds: ["squat-low", "squat-high"],
     tables: () => tweak(LIFT_TABLES.squatShared, { rise: { from: -3, dur: 0.1 } }),
@@ -442,7 +442,7 @@ const MUTATIONS: Mutation[] = [
     tables: () => { const t = LIFT_TABLES.bench.bench; return tweak(t, { swivel: t.swivel + 0.12 }); },
   },
   {
-    name: "the bar rests on top of the drawn chest again (settles 2.5 mm, as before: 0.158 above the shoulders)", kinds: ["bench", "bench-close"],
+    name: "the bar rests on top of the drawn chest (settles 2.5 mm: 0.158 above the shoulders)", kinds: ["bench", "bench-close"],
     tables: () => { const a = tweak(LIFT_TABLES.bench.bench, { sink: 0.0025 }), b = tweak(LIFT_TABLES.bench["bench-close"], { sink: 0.0025 }); return () => { a(); b(); }; },
   },
   {
@@ -480,17 +480,17 @@ const MUTATIONS: Mutation[] = [
     name: "a forearm swung through the thigh: the free hand dragged 5 cm toward the body", kinds: ["deadlift-conventional"],
     pose: (p, t, set) => { if (!p.gripping && t < segment(set, "grip").start) for (const s of M.SIDES) p.hand[s] = [p.hand[s][0], p.hand[s][1], p.hand[s][2] * 0.4]; },
   },
-  // ---- one for the main defects of the third verification
+  // ---- the squat's release, arm hang and speed; the bench's landing and press speed; the deadlift's pull, lowering and walk-up
   {
-    name: "the squat release unfolds the forearm through the front again (no back swing, 1.3 s, a half-cosine drop)", kinds: ["squat-low", "squat-high"],
+    name: "the squat release unfolds the forearm through the front (no back swing, 1.3 s, a half-cosine drop)", kinds: ["squat-low", "squat-high"],
     tables: () => { const sh = LIFT_TABLES.squatShared as any; const r = sh.release, g = sh.letGo; sh.release = { ...r, elbowBack: 0, speed: [[0, 0], [0.5, 1], [1, 0]] }; sh.letGo = 1.3; return () => { sh.release = r; sh.letGo = g; }; },
   },
   {
-    name: "the squat arms hang at the old width (the free mitt grazes the thigh at the step out)", kinds: ["squat-low", "squat-high"],
+    name: "the squat arms hang too close to the thigh (the free mitt grazes it at the step out)", kinds: ["squat-low", "squat-high"],
     tables: () => tweak(LIFT_TABLES.squatShared, { hangOut: 0.09 }),
   },
   {
-    name: "a squat rep as slow as before (the 8-rep set over 31 s)", kinds: ["squat-low", "squat-high"],
+    name: "a squat rep too slow (the 8-rep set over 31 s)", kinds: ["squat-low", "squat-high"],
     tables: () => { const lo = LIFT_TABLES.squat["squat-low"], hi = LIFT_TABLES.squat["squat-high"]; const a = tweak(lo, { up: 1.4, lockout: 0.2 }), b = tweak(hi, { up: 1.4, lockout: 0.2 }); return () => { a(); b(); }; },
   },
   {
@@ -506,20 +506,20 @@ const MUTATIONS: Mutation[] = [
     tables: () => tweak(LIFT_TABLES.deadlift["deadlift-conventional"], { lowerPeak: 0.95, tempo: { lead: 0.103, pull: 1.63, hold: 0.31, lower: 1.1, floor: 0.31 } }),
   },
   {
-    name: "a deadlift pull that leaves the floor on the old lead (0.154 s by 2 mm) and at the old first speed", kinds: ["deadlift-conventional", "deadlift-sumo"],
+    name: "a deadlift pull that leaves the floor too soon (0.154 s by 2 mm) and too fast at first", kinds: ["deadlift-conventional", "deadlift-sumo"],
     tables: () => { const c = LIFT_TABLES.deadlift["deadlift-conventional"], s = LIFT_TABLES.deadlift["deadlift-sumo"]; const a = tweak(c, { tempo: { ...c.tempo, lead: 0.08 }, pullStart: 0.3 }), b = tweak(s, { tempo: { ...s.tempo, lead: 0.08 } }); return () => { a(); b(); }; },
   },
   {
-    name: "a sumo walk-up with the wide landing as quick as before (knee acceleration 93 m/s2)", kinds: ["deadlift-sumo"],
+    name: "a sumo walk-up with the wide landing too quick (knee acceleration 93 m/s2)", kinds: ["deadlift-sumo"],
     tables: () => tweak(LIFT_TABLES.deadliftShared, { wideScale: 1, walkReach: 0.841 }),
   },
   {
     name: "a walk-up with steps of 0.40 s and an arm swing of 41 degrees", kinds: ["deadlift-conventional", "deadlift-sumo"],
     tables: () => tweak(LIFT_TABLES.deadliftShared, { stepDur: 0.46, swing: 0.8 }),
   },
-  // ---- the coach's last review: a brisk walk in, a long dead time in the rack, a quick stand up, hands held in the air
+  // ---- a brisk walk in, a long dead time in the rack, a quick stand up, hands held in the air
   {
-    name: "a brisk walk in (steps of 0.35 s, as quick as the old walk in), and a walkout that is as brisk",
+    name: "a brisk walk in (steps of 0.35 s), and a walkout that is as brisk",
     kinds: ["squat-low", "squat-high"],
     tables: () => tweak(LIFT_TABLES.squatShared, { stepDur: [0.35, 0.4, 0.35] } as any),
   },
@@ -534,7 +534,7 @@ const MUTATIONS: Mutation[] = [
     tables: () => tweak(LIFT_TABLES.deadliftShared, { hinge: 0.6, letGo: 0.7 }),
   },
   {
-    name: "the bench lifter's hands rest in the air above the chest, the elbows out wide again",
+    name: "the bench lifter's hands rest in the air above the chest, the elbows out wide",
     kinds: ["bench", "bench-close"],
     tables: () => tweak(LIFT_TABLES.benchShared, { restHand: [0.32, 0.74, 0.16], restPole: [0.5, -1.5, 2] } as any),
   },
@@ -568,7 +568,7 @@ function failuresUnder(m: Mutation, kind: LiftKind): string[] {
 const mutations = process.env.LIFT_MUTATIONS ? test : test.skip;
 mutations("the mutation table has at least twelve entries, and covers every family", () => {
   assert.ok(MUTATIONS.length >= 12);
-  const kinds = new Set(MUTATIONS.flatMap((m) => m.kinds.map(familyOf)));
+  const kinds = new Set(MUTATIONS.flatMap((m) => m.kinds.map(liftFamily)));
   assert.deepEqual([...kinds].sort(), ["bench", "deadlift", "squat"]);
 });
 

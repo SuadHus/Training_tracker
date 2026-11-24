@@ -1,11 +1,11 @@
-// Measurements of a LiftSet, in the terms three coaches used. Pure functions over 240 Hz samples.
+// Measurements of a LiftSet, in the terms the reference figures use. Pure functions over 240 Hz samples.
 // `tests/lift-motion.test.ts` asserts them.
 
 import type { LiftPose } from "../../../src/lib/lift-pose";
 import type { LiftSet } from "../../../src/lib/lift-set";
 
 export const HZ = 240;
-export const DT = 1 / HZ;
+const DT = 1 / HZ;
 export type V = [number, number, number];
 export const SIDES = ["R", "L"] as const;
 export type Side = (typeof SIDES)[number];
@@ -20,7 +20,7 @@ export const unit = (a: readonly number[]): V => { const l = len(a) || 1; return
 export const cross = (a: readonly number[], b: readonly number[]): V => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 export const mean = (xs: number[]) => xs.reduce((s, x) => s + x, 0) / (xs.length || 1);
 export const both = (f: (s: Side) => number) => mean(SIDES.map(f));
-export const angleAt = (a: readonly number[], b: readonly number[], c: readonly number[]) => {
+const angleAt = (a: readonly number[], b: readonly number[], c: readonly number[]) => {
   const u = sub(a, b), v = sub(c, b);
   return deg(Math.acos(Math.max(-1, Math.min(1, dot(u, v) / (len(u) * len(v) || 1)))));
 };
@@ -159,7 +159,7 @@ export function alongAxis(p: LiftPose, point: readonly number[]): number {
   return ((point[0] - p.pelvis[0]) * a[0] + (point[1] - p.pelvis[1]) * a[1]) / l;
 }
 
-export const BONES: Record<string, (p: LiftPose) => number> = {
+const BONES: Record<string, (p: LiftPose) => number> = {
   thighR: (p) => dist(p.hip.R, p.knee.R), thighL: (p) => dist(p.hip.L, p.knee.L),
   shankR: (p) => dist(p.knee.R, p.ankle.R), shankL: (p) => dist(p.knee.L, p.ankle.L),
   upperR: (p) => dist(p.shoulder.R, p.elbow.R), upperL: (p) => dist(p.shoulder.L, p.elbow.L),
@@ -194,7 +194,7 @@ export const kneeAngle = (p: LiftPose, s: Side) => angleAt(p.hip[s], p.knee[s], 
 export const elbowAngle = (p: LiftPose, s: Side) => angleAt(p.shoulder[s], p.elbow[s], p.wrist[s]);
 
 // ------------------------------------------------------------------------------------------------ feet and steps
-export type StepInfo = { side: Side; t0: number; t1: number; dur: number; length: number; dx: number; peakLift: number; peakHeelOverToe: number; peakToeOverHeel: number };
+type StepInfo = { side: Side; t0: number; t1: number; dur: number; length: number; dx: number; peakLift: number; peakHeelOverToe: number; peakToeOverHeel: number };
 export function footEvents(s: Sampled, i0: number, i1: number) {
   const steps: StepInfo[] = [];
   const planted: Record<Side, Array<{ t0: number; t1: number; slide: number }>> = { R: [], L: [] };
@@ -243,9 +243,9 @@ export const stanceOf = (p: LiftPose) => ({
 export const RAD = { thigh: 0.092, knee: 0.062, calf: 0.064, shin: 0.05, upper: 0.054, forearm: 0.042, fist: 0.05, neck: 0.046, skull: 0.098, torso: 0.118, bar: 0.0145 };
 const BAR_HALF = 0.655;
 /** Distance from the bar's shaft (a segment along z at the bar's x, y) to a point. */
-export const barToPoint = (p: LiftPose, q: readonly number[]) => distToSeg3(q, [p.bar[0], p.bar[1], -BAR_HALF], [p.bar[0], p.bar[1], BAR_HALF]);
+const barToPoint = (p: LiftPose, q: readonly number[]) => distToSeg3(q, [p.bar[0], p.bar[1], -BAR_HALF], [p.bar[0], p.bar[1], BAR_HALF]);
 /** Distance from the bar's shaft to a segment. */
-export const barToSeg = (p: LiftPose, a: readonly number[], b: readonly number[]) => segSeg([p.bar[0], p.bar[1], -BAR_HALF], [p.bar[0], p.bar[1], BAR_HALF], a, b);
+const barToSeg = (p: LiftPose, a: readonly number[], b: readonly number[]) => segSeg([p.bar[0], p.bar[1], -BAR_HALF], [p.bar[0], p.bar[1], BAR_HALF], a, b);
 
 /** Gap between a segment (radius r1) and a tapered limb a->b (radius ra at a, rb at b): the smallest centre distance minus the radius at the nearest point. */
 function gapToTapered(c0: readonly number[], c1: readonly number[], r1: number, a: readonly number[], b: readonly number[], ra: number, rb: number): number {
@@ -258,10 +258,10 @@ function gapToTapered(c0: readonly number[], c1: readonly number[], r1: number, 
   return best;
 }
 /** Tapered radii of the legs as drawn: thigh 0.092 at the hip to 0.062 at the knee; shin 0.062 at the knee to 0.04 at the ankle. */
-export const THIGH_R: [number, number] = [0.092, 0.062];
-export const SHIN_R: [number, number] = [0.062, 0.04];
+const THIGH_R: [number, number] = [0.092, 0.062];
+const SHIN_R: [number, number] = [0.062, 0.04];
 
-export type Clearances = {
+type Clearances = {
   barHead: number; barNeck: number; barThigh: number; barShin: number; barKnee: number; barTorso: number;
   handTorso: number; forearmThigh: number; upperThigh: number; elbowTorso: number; footFoot: number; elbowKnee: number;
 };
@@ -297,7 +297,7 @@ export function clearances(s: Sampled, from = 0, to = s.poses.length - 1): Clear
 // toward the front; shoulder balls; a chest ball and one a little further up; a waist ball; for the lower trunk the two hip
 // balls and a seat ball 0.03 behind the pelvis). The signed distance to the convex hull of such balls is exact in three
 // dimensions: the largest, over many directions, of the point's reach in that direction minus the hull's.
-export type Ball = [readonly number[], number];
+type Ball = [readonly number[], number];
 const HULL_DIRS: V[] = (() => { const o: V[] = []; const N = 300; for (let i = 0; i < N; i++) { const y = 1 - (2 * (i + 0.5)) / N, r = Math.sqrt(1 - y * y), th = i * 2.399963229728653; o.push([r * Math.cos(th), y, r * Math.sin(th)]); } return o; })();
 export function hullSigned(pt: readonly number[], balls: Ball[]): number {
   // the support function of the hull of the balls in direction u, and the point's reach beyond it: the signed distance is the largest of these over all unit u
@@ -338,7 +338,7 @@ export function barToDrawnTorso(p: LiftPose): number {
 // ------------------------------------------------------------------------------------------------ limbs as drawn: tapered capsules
 // The radii of lift-draw.ts (R table) and where each limb changes size (thigh: hip 0.092, 45% of the way 0.088, knee 0.062;
 // shin: knee 0.062, 30% of the way 0.064, ankle 0.036; forearm 0.044 at the elbow to 0.032 at the wrist; the closed hand 0.04).
-export type Cap = { name: string; a: readonly number[]; b: readonly number[]; ra: number; rb: number };
+type Cap = { name: string; a: readonly number[]; b: readonly number[]; ra: number; rb: number };
 const lerp3 = (a: readonly number[], b: readonly number[], t: number): V => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 export function drawnCaps(p: LiftPose): Cap[] {
   const out: Cap[] = [];
@@ -379,12 +379,12 @@ export function capGap(x: Cap, y: Cap): number {
   const c1 = add(x.a, mul(d1, s)), c2 = add(y.a, mul(d2, t));
   return len(sub(c1, c2)) - (x.ra + (x.rb - x.ra) * s) - (y.ra + (y.rb - y.ra) * t);
 }
-export const BAR_SHAFT_HALF = 1.1;
+const BAR_SHAFT_HALF = 1.1;
 /** Gap from the bar (shaft and sleeves) to a limb. */
-export function barToCap(p: LiftPose, c: Cap): number {
+function barToCap(p: LiftPose, c: Cap): number {
   return capGap({ name: "bar", a: [p.bar[0], p.bar[1], -BAR_SHAFT_HALF], b: [p.bar[0], p.bar[1], BAR_SHAFT_HALF], ra: RAD.bar, rb: RAD.bar }, c);
 }
-export type LimbGaps = {
+type LimbGaps = {
   handThigh: number; forearmThigh: number; upperThigh: number; handShin: number; forearmShin: number;
   handTorso: number; forearmTorso: number; upperTorso: number; barThigh: number; barShin: number; barFarm: number; elbowTorso: number;
 };
@@ -435,7 +435,7 @@ export function armsToTrunkHull(p: LiftPose): { upper: number; forearm: number }
   return out;
 }
 /** Signed distance (m) from a point to the drawn trunk taken as the union of the capsules the drawing makes it of (pelvis-waist, waist-ribs, ribs-chest, the two clavicles, the two hips): what an arm lying against the side of the chest really meets. */
-export function trunkUnionSigned(pt: readonly number[], p: LiftPose): number {
+function trunkUnionSigned(pt: readonly number[], p: LiftPose): number {
   const cap = (a: readonly number[], ra: number, b: readonly number[], rb: number) => {
     const ab = sub(b, a), t = Math.max(0, Math.min(1, dot(sub(pt, a), ab) / (dot(ab, ab) || 1)));
     return len(sub(pt, add(a, mul(ab, t)))) - (ra + (rb - ra) * t);

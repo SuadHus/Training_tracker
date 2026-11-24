@@ -1,13 +1,11 @@
 import { Fragment } from "react";
 import Link from "next/link";
 import { BarLoad, perSide } from "@/app/ui/bar-load";
-import { LiftStage } from "@/app/ui/lift-stage";
 import { Notation, Num } from "@/app/ui/notation";
 import { WeekDots } from "@/app/ui/week-strip";
 import { dayLabel, dayShort, weekAnchor, weekLabel, weekName, weekRange } from "@/src/lib/day-format";
-import type { MainLift } from "@/src/lib/lift-row";
-import { topLifts } from "@/src/lib/lifts";
-import { formatSpan, formatTotal, platesPerSide, STANDARD_BAR_KG } from "@/src/lib/workout-doc";
+import { barBeside, heaviestBar, shownAbove } from "@/src/lib/week-bars";
+import { formatSpan, formatTotal } from "@/src/lib/workout-doc";
 import type { PlannedSessionSummary, SessionBlock, SessionSummary, WeekSummary } from "@/src/lib/public-data";
 import { plural } from "./format";
 import { hasValue } from "./sets";
@@ -55,30 +53,9 @@ export function WeekHeader({ week, sofar }: { week: WeekSummary; sofar?: boolean
   );
 }
 
-type Drawn = SessionBlock & { top: NonNullable<SessionBlock["top"]> & { load: number } };
-
-function drawable(block: SessionBlock): block is Drawn {
-  return block.exercise.equipment === "barbell" && block.top !== null && block.top.load !== null &&
-    platesPerSide(block.top.load, block.exercise.barKg ?? STANDARD_BAR_KG) !== null;
-}
-
-/** The heaviest drawable barbell working set of a week, ties broken by reps. */
-function heaviestSet(week: WeekSummary) {
-  let best: { session: SessionSummary; block: Drawn } | null = null;
-  for (const session of week.sessions) {
-    for (const block of session.blocks) {
-      if (!drawable(block)) continue;
-      if (!best || block.top.load > best.block.top.load ||
-        (block.top.load === best.block.top.load && (block.top.reps ?? 0) > (best.block.top.reps ?? 0))) {
-        best = { session, block };
-      }
-    }
-  }
-  return best;
-}
-
+/** The week's heaviest bar as plates, for a week with none of the six main lifts. */
 export function HeaviestBar({ week }: { week: WeekSummary }) {
-  const found = heaviestSet(week);
+  const found = heaviestBar(week);
   if (!found) return null;
   const { session, block } = found;
   const bar = block.exercise.barKg;
@@ -100,36 +77,7 @@ export function HeaviestBar({ week }: { week: WeekSummary }) {
   );
 }
 
-const mainLiftsOf = (week: WeekSummary) => topLifts<SessionBlock, SessionSummary>(week.sessions);
-
-/**
- * The top of a week on the home page: the lifter doing each main lift of the week with the real load and reps, or, when the week has
- * none of the six, the heaviest bar as plates.
- */
-export function MainLifts({ week }: { week: WeekSummary }) {
-  const tops = mainLiftsOf(week);
-  if (tops.length === 0) return <HeaviestBar week={week} />;
-  const lifts: MainLift[] = tops.map(({ kind, session, block, load, reps }) => ({
-    kind, exercise: block.exercise.name, loadKg: load, barKg: block.exercise.barKg ?? STANDARD_BAR_KG, reps, rpe: block.top?.rpe ?? null,
-    day: dayLabel(session.day),
-  }));
-  return (
-    <div className="row row--stack">
-      <div className="row-margin">{lifts.length > 1 ? "Main lifts" : "Main lift"}</div>
-      <LiftStage lifts={lifts} />
-    </div>
-  );
-}
-
-/** The blocks that `MainLifts` shows above a week's sessions: every main lift, or the heaviest bar. */
-function shownAbove(week: WeekSummary): ReadonlySet<SessionBlock> {
-  const lifts = mainLiftsOf(week);
-  if (lifts.length > 0) return new Set(lifts.map((lift) => lift.block));
-  const heaviest = heaviestSet(week);
-  return new Set(heaviest ? [heaviest.block] : []);
-}
-
-export function SessionRow({
+function SessionRow({
   session, today, highlightToday, drawn,
 }: {
   session: SessionSummary;
@@ -138,7 +86,7 @@ export function SessionRow({
   drawn?: ReadonlySet<SessionBlock>;
 }) {
   // A bar already drawn large above the list is not drawn again beside its session.
-  const lead = session.blocks.filter((block) => !drawn?.has(block)).find(drawable);
+  const lead = barBeside(session, drawn);
   const lines = session.blocks
     .map((block) => ({ block, runs: block.runs.filter((run) => hasValue(run.measures)) }))
     .filter(({ runs }) => runs.length > 0);

@@ -6,7 +6,7 @@ import { makeLiftSet } from "../src/lib/lift-motion";
 import { computePlans, stageFor } from "../src/lib/lift-plan";
 import { PLANS } from "../src/lib/lift-plans";
 import { basis, CAMERAS, dot3, MAX_HEIGHT, STRIP_HEIGHT, type StageSize, type ViewPlan } from "../src/lib/lift-camera";
-import { samplePoses } from "../src/lib/lift-set";
+import { repSegments, samplePoses } from "../src/lib/lift-set";
 import { LIFT_KINDS } from "../src/lib/lifts";
 import { platesPerSide } from "../src/lib/workout-doc";
 
@@ -29,7 +29,7 @@ test("the floor is one level rule at the soles of the planted feet: no foot, at 
   for (const size of SIZES) for (const kind of LIFT_KINDS) {
     const main = stageFor(kind, size).views[0];
     const set = makeLiftSet(kind, { reps: 2 });
-    const reps = set.timeline.filter((s) => /^rep \d+$/.test(s.name));
+    const reps = repSegments(set.timeline);
     let lowest = -Infinity;
     for (let t = reps[0].start; t <= reps[reps.length - 1].end; t += 0.05) {
       const pose = set.pose(t);

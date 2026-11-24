@@ -19,7 +19,7 @@ test("play starts from the beginning, ticks advance the clock, and the end rests
   assert.equal(buttonWord(s), "Pause");
   s = run([{ type: "tick", dt: 0.05 }, { type: "tick", dt: 0.05 }], s);
   assert.ok(Math.abs(s.t - 0.1) < 1e-12);
-  s = run([{ type: "seek", t: 9.98 }, { type: "play" }, { type: "tick", dt: 0.05 }], s);
+  s = run([{ type: "tick", dt: 0.05 }], { ...s, t: 9.98 });
   assert.equal(s.ended, true);
   assert.equal(s.playing, false);
   assert.equal(s.t, 4, "it rests on its most telling still");
@@ -51,14 +51,6 @@ test("a long gap between ticks (a tab that was away) moves the clock by one shor
   const s = run([SHOW, { type: "play" }, { type: "tick", dt: 30 }]);
   assert.equal(s.t, MAX_STEP);
   assert.equal(run([SHOW, { type: "play" }, { type: "tick", dt: -1 }]).t, 0);
-});
-
-test("seeking clamps to the set and stops the clock", () => {
-  const s = run([SHOW, { type: "play" }, { type: "seek", t: 99 }]);
-  assert.equal(s.t, 10);
-  assert.equal(s.playing, false);
-  assert.equal(run([SHOW, { type: "seek", t: -3 }]).t, 0);
-  assert.equal(run([SHOW, { type: "seek", t: Number.NaN }]).t, 0);
 });
 
 test("a new set keeps what the eyes and the tab were doing, and forgets what the old set was doing", () => {

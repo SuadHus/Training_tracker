@@ -9,7 +9,7 @@ export type Transport = {
   hero: number;
   /** Wants to play: the button reads Pause. */
   playing: boolean;
-  /** Has been played, or sought, since the set was shown. */
+  /** Has been played since the set was shown. */
   started: boolean;
   /** The last frame has been played: the button reads Replay. */
   ended: boolean;
@@ -25,8 +25,7 @@ export type TransportEvent =
   | { type: "pause" }
   | { type: "visible"; value: boolean }
   | { type: "tabHidden"; value: boolean }
-  | { type: "tick"; dt: number }
-  | { type: "seek"; t: number };
+  | { type: "tick"; dt: number };
 
 export const initialTransport: Transport = { t: 0, duration: 0, hero: 0, playing: false, started: false, ended: false, visible: true, tabHidden: false };
 
@@ -48,7 +47,6 @@ export function transport(s: Transport, event: TransportEvent): Transport {
     case "pause": return { ...s, playing: false };
     case "visible": return { ...s, visible: event.value };
     case "tabHidden": return { ...s, tabHidden: event.value };
-    case "seek": return { ...s, t: Math.max(0, Math.min(s.duration, Number.isFinite(event.t) ? event.t : 0)), playing: false, started: true, ended: false };
     case "tick": {
       if (!isMoving(s)) return s;
       const t = s.t + Math.max(0, Math.min(MAX_STEP, event.dt));

@@ -10,7 +10,8 @@ import { dailyVitals, publicBestLifts, publicJournal, publicUpcomingPlanned, pub
 import { formatTotal, platesPerSide, STANDARD_BAR_KG, stockholmDay, weekStart } from "@/src/lib/workout-doc";
 import { excerptOf, plural } from "./_parts/format";
 import { vitalRows, VitalsTable } from "./_parts/vitals";
-import { MainLifts, PlannedSessionRow, trainedDays, WeekHeader, WeekSessions, WeekText, WeekTotals } from "./_parts/week";
+import { MainLifts } from "./_parts/main-lifts";
+import { PlannedSessionRow, trainedDays, WeekHeader, WeekSessions, WeekText, WeekTotals } from "./_parts/week";
 import styles from "./public.module.css";
 
 export const dynamic = "force-dynamic";

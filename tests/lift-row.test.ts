@@ -57,5 +57,9 @@ test("the counter shows the rep under way, the next one between reps, and every 
   assert.deepEqual(counterOf(8, { rep: 0, done: 8 }, "rack", false), { shown: 8, done: 8, total: 8, phase: "rack" });
   assert.deepEqual(counterOf(8, { rep: 1, done: 0 }, "pull", true), { shown: 8, done: 8, total: 8, phase: "done" });
   assert.deepEqual(squareClasses(counterOf(3, { rep: 2, done: 1 }, "", false)), ["done", "now", ""]);
-  assert.equal(squareClasses(counterOf(30, { rep: 2, done: 1 }, "", false)).length, MAX_SQUARES, "a long set gets a row of squares as long as the line allows");
+  assert.equal(MAX_SQUARES, 10, "ten squares fit the foot of the stage on a phone 320 px wide");
+  assert.equal(squareClasses(counterOf(MAX_SQUARES, { rep: 2, done: 1 }, "", false)).length, MAX_SQUARES, "a set of the most the row can hold has a square for each rep");
+  for (const total of [MAX_SQUARES + 1, 12, 30]) {
+    assert.deepEqual(squareClasses(counterOf(total, { rep: 2, done: 1 }, "", false)), [], `${total} reps: no row, because a row that stopped short would look finished`);
+  }
 });

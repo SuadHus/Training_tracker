@@ -21,7 +21,11 @@ export type SquatCfg = {
   kneeTop: number; kneeOutB: number;
   /** The shank and the thigh turn from their standing angles to their bottom angles as the depth parameter to these powers (the shank never back, the thigh slowly at first). */
   shankPow: number; thighPow: number;
-  /** Where the elbows are pointed while gripping: the pole of the arm solve, as a share along the torso (up) and away from the back (back), and sideways (z, outward). */
+  /**
+   * Where the elbows are pointed while gripping: the pole of the arm solve, as a share along the torso (up) and away from the back
+   * (back), and sideways (z, outward). In a squat the elbows are under the bar, so `up` is negative for both: the low bar's point
+   * back and down beside the ribs, the high bar's down and out.
+   */
   pole: { up: number; back: number; z: number };
   /** Rep tempo, seconds. */
   lead: number; down: number; pause: number; up: number; lockout: number;
@@ -30,7 +34,7 @@ export type SquatCfg = {
 export const SQUAT: Record<"squat-low" | "squat-high", SquatCfg> = {
   "squat-low": {
     stance: 0.238, toeOut: 29 * DEG, grip: 0.72, shankB: 26.3 * DEG, depth: -0.04, barUp: -0.052, barBack: 0.126,
-    lumbarK: 1.0, headK: 0.25, headOff: 0.05, thStand: 0.2, kneeTop: 0.01, kneeOutB: 0.075, shankPow: 2, thighPow: 2.5, pole: { up: 0.55, back: 1, z: 0.1 },
+    lumbarK: 1.0, headK: 0.25, headOff: 0.05, thStand: 0.2, kneeTop: 0.01, kneeOutB: 0.075, shankPow: 2, thighPow: 2.5, pole: { up: -1, back: 0.4, z: 0.5 },
     lead: 0.005, down: 1.24, pause: 0.0837, up: 1.3129, lockout: 0.1666,
   },
   "squat-high": {

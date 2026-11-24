@@ -5,6 +5,8 @@
 // the feet). y is up from the floor. z points to the lifter's right hand. The bar is
 // level and runs along z.
 
+import type { LiftFamily } from "./lifts";
+
 export type Vec3 = readonly [x: number, y: number, z: number];
 export type Sided<T> = { R: T; L: T };
 
@@ -36,7 +38,7 @@ export type LiftPose = {
 
 /** What stands on the floor around the lifter, fixed for the whole set. */
 export type LiftScene = {
-  family: "squat" | "bench" | "deadlift";
+  family: LiftFamily;
   /** Squat and bench: the uprights that hold the bar. x of the posts, y of the bar centre when it rests in the hooks, half the distance between the posts. */
   rack: { x: number; barX: number; barY: number; halfWidth: number; height: number } | null;
   /** Bench: the pad the lifter lies on. */

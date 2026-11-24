@@ -1,14 +1,13 @@
 // The invariants every lift keeps, as Checks (so that the mutation tests can see them fail).
 import * as M from "./measure";
 import { type Check, getSet } from "./check";
-import { LIFT_KINDS, type LiftKind } from "../../../src/lib/lifts";
-
-import { family } from "./util";
+import { repSegments } from "../../../src/lib/lift-set";
+import { LIFT_KINDS, liftFamily, type LiftKind } from "../../../src/lib/lifts";
 
 export function generalChecks(kind: LiftKind, reps = 2): Check[] {
   const set = getSet(kind, reps);
   const s = M.sample(set);
-  const fam = family(kind);
+  const fam = liftFamily(kind);
   const out: Check[] = [];
   const c = (id: string, value: number, lo: number, hi: number) => out.push({ id: `${kind}: ${id}`, value, lo, hi, note: "" });
 
@@ -79,7 +78,7 @@ export function generalChecks(kind: LiftKind, reps = 2): Check[] {
   c("timeline: contiguous, positive lengths (1 = yes)", contiguous, 1, 1);
   c("timeline: starts at 0 (s)", Math.abs(tl[0].start), 0, 1e-9);
   c("timeline: ends at the duration (s)", Math.abs(tl[tl.length - 1].end - set.duration), 0, 1e-9);
-  const repNames = tl.filter((x) => /^rep \d+$/.test(x.name)).map((x) => x.name);
+  const repNames = repSegments(tl).map((x) => x.name);
   c("timeline: reps named rep 1 .. rep n in order (1 = yes)", repNames.length === reps && repNames.every((n, i) => n === `rep ${i + 1}`) ? 1 : 0, 1, 1);
   c("timeline: names are plain lower-case words (1 = yes)", tl.every((x) => /^(rep \d+|[a-z-]+( [a-z-]+)*)$/.test(x.name)) ? 1 : 0, 1, 1);
   let quiet = 1;
@@ -147,7 +146,7 @@ export function jointSmoothness(kind: LiftKind): Check[] {
   const s = M.sample(set);
   const out: Check[] = [];
   const c = (id: string, value: number, lo: number, hi: number) => out.push({ id: `${kind}: ${id}`, value, lo, hi, note: "" });
-  const fam = family(kind);
+  const fam = liftFamily(kind);
   // The elbow near a straight arm and the knee near a straight leg turn a small change of length into a large swing of the joint.
   for (const j of ["elbow", "wrist", "knee"] as const) for (const sd of M.SIDES) {
     const pk = M.peaks(s.poses.map((p) => p[j][sd]), 2, s.poses.length - 3);

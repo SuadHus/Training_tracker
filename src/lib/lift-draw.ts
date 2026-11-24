@@ -37,7 +37,7 @@ export type Prim = {
 
 export type Drawing = { width: number; height: number; viewBox: string; prims: Prim[] };
 
-export type DrawInput = {
+type DrawInput = {
   pose: LiftPose;
   scene: LiftScene;
   /** The plates on one sleeve, heaviest first (`platesPerSide`). */
@@ -47,7 +47,7 @@ export type DrawInput = {
   memo?: BarMemo;
 };
 
-export type BarMemo = Map<string, BarPiece[]>;
+type BarMemo = Map<string, BarPiece[]>;
 /** A fresh memo for the bar assembly: one per stage on the page, for as long as it lives. */
 export const makeMemo = (): BarMemo => new Map();
 
@@ -229,7 +229,7 @@ function drawView(view: ViewPlan, viewIndex: number, input: DrawInput, out: Entr
   }
 }
 
-export type BarPiece = { id: string; cls: string; part: Part; d: string; z: number; bias: number; side?: "R" | "L"; index?: number };
+type BarPiece = { id: string; cls: string; part: Part; d: string; z: number; bias: number; side?: "R" | "L"; index?: number };
 
 /**
  * Every outline of the bar assembly (shaft pieces, sleeve flanges, plates and their faces, collars, sleeve ends) in
