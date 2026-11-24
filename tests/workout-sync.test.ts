@@ -20,7 +20,7 @@ const block = (n: number, sets: SetDoc[], patch: Partial<BlockDoc> = {}): BlockD
 });
 const draft = (blocks: BlockDoc[], patch: Partial<WorkoutDraft> = {}): WorkoutDraft => ({ title: "Upper A", day: "2026-11-22", notes: "", blocks, ...patch });
 const server = (from: WorkoutDraft, revision: number): WorkoutDoc => ({
-  id: "11111111-1111-4111-8111-111111111111", status: "planned", templateId: null, startedAt: null, completedAt: null, revision, ...from,
+  id: "11111111-1111-4111-8111-111111111111", status: "planned", templateId: null, startedAt: null, completedAt: null, durationMinutes: null, revision, ...from,
 });
 const logged = (from: WorkoutDraft) => from.blocks.map((item) => item.sets.map((one) => (one.loggedAt ? one.actual.reps : "-")).join(""));
 

@@ -77,7 +77,7 @@ async function train(id: string, change: (reps: number | null) => number | null 
     })),
   });
   assert.equal(saved.ok, true, JSON.stringify(saved));
-  await store.completeWorkout(id);
+  await store.completeWorkout(id, null);
 }
 
 test("a block is built from templates on the days of its week, heavier each week", { skip }, async () => {

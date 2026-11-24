@@ -148,6 +148,22 @@ test("exercises received sensible tracking and equipment", { skip }, async () =>
   assert.equal(by.get("Low-bar squat")?.tracking, "weight_reps");
 });
 
+test("workouts gained a nullable time in minutes, empty for everything that was already there", { skip }, async () => {
+  const [column] = await legacy.rows<{ is_nullable: string; data_type: string }>(
+    `SELECT is_nullable, data_type FROM information_schema.columns
+      WHERE table_schema = current_schema() AND table_name = 'workouts' AND column_name = 'duration_minutes'`,
+  );
+  assert.equal(column.is_nullable, "YES");
+  assert.equal(column.data_type, "integer");
+  const [filled] = await legacy.rows<{ count: number }>("SELECT count(*)::int AS count FROM workouts WHERE duration_minutes IS NOT NULL");
+  assert.equal(filled.count, 0);
+  for (const bad of [0, 1441, -1]) {
+    await assert.rejects(legacy.run(`UPDATE workouts SET duration_minutes = ${bad}`), /duration_minutes/, String(bad));
+  }
+  // Inside a transaction that is rolled back, so the snapshot of the next test still holds.
+  await legacy.run("BEGIN; UPDATE workouts SET duration_minutes = 1; UPDATE workouts SET duration_minutes = 1440; ROLLBACK;");
+});
+
 test("applying the schema again changes nothing", { skip }, async () => {
   assert.equal(JSON.stringify(await snapshot()), secondRun);
   const migrations = await legacy.rows<{ name: string }>("SELECT name FROM schema_migrations");

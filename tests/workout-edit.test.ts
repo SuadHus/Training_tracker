@@ -19,7 +19,7 @@ const block = (id: string, sets: SetDoc[], exerciseId = "ex1"): BlockDoc => ({ i
 function workout(blocks: BlockDoc[], status: WorkoutDoc["status"] = "planned"): WorkoutDoc {
   return {
     id: "w", status, title: "Legs", day: status === "template" ? null : "2026-11-22", notes: "", templateId: null,
-    startedAt: null, completedAt: null, revision: 3, blocks,
+    startedAt: null, completedAt: null, durationMinutes: null, revision: 3, blocks,
   };
 }
 

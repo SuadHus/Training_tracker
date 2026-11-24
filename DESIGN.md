@@ -224,6 +224,10 @@ The masthead is a 4px ink rule, the name, and three links (This week, All weeks,
 
 Set number, last time, inputs, done button. Every control is named with its exercise and set ("Bench press, Set 2 kg"). Logged: a solid square with a tick, the numbers settle to regular weight. Next: the row sits on `mark`, the set number is inverted, the inputs have 2px ink edges and show what a tap on done will log in ink, and barbell exercises show the plates per side underneath.
 
+### Exercise grip (planning)
+
+`grip` in the header of each exercise of a template or of a planned session in which no set is done yet, a 44px icon button named "Move" and the exercise. Dragging it carries the block: the block follows the pointer inside the list, marked by the `wash` ground and a 3px ink rule above and below, with no shadow; the others move aside by a transform and ease only when motion is welcome. The page scrolls by itself near the top and bottom edge. The exercise numbers follow the carried block as it goes. Escape puts it back, and so does a list that changes under the carry. Arrow Up and Arrow Down on the grip move the block one place, focus stays on the grip and a polite live region says "Bench press, 2 of 5"; Enter says how to move it. The grip stands 8px clear of the menu button. The handle alone refuses touch scrolling (`touch-action: none`). Once a set is logged the grips are gone, and so they are from a finished session.
+
 ### Sheet
 
 `<Sheet>` is the native dialog: from the bottom on a phone, centred on a desk. On opening, focus goes to the safe answer of a question (`data-autofocus`), else to the first field when there is a keyboard and a mouse. On a touch screen it stays on Close, so the keyboard does not cover the sheet before it is read.

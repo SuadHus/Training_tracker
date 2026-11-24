@@ -78,7 +78,7 @@ async function planned(day: string, blocks: BlockSpec[], title = "Session") {
 
 async function completed(day: string, blocks: BlockSpec[], title = "Session") {
   const id = await planned(day, blocks, title);
-  await store.completeWorkout(id);
+  await store.completeWorkout(id, null);
   return id;
 }
 
@@ -339,26 +339,136 @@ test("a template cannot be made from nothing, from a template, or without a name
 test("a session can only be finished with a logged set and a date that is not in the future", { skip }, async () => {
   await reset();
   const blank = await planned(today, [{ exercise: squat, sets: [{ reps: 5, load: 100 }] }]);
-  await assert.rejects(store.completeWorkout(blank), /at least one set/);
+  await assert.rejects(store.completeWorkout(blank, null), /at least one set/);
   const future = await planned(addDays(today, 2), [{ exercise: squat, sets: [lifted(5, 100)] }]);
-  await assert.rejects(store.completeWorkout(future), /future/);
+  await assert.rejects(store.completeWorkout(future, null), /future/);
   const template = await store.createWorkout({ status: "template", title: "T" });
-  await assert.rejects(store.completeWorkout(template), WorkoutInputError);
-  await assert.rejects(store.completeWorkout(crypto.randomUUID()), WorkoutInputError);
+  await assert.rejects(store.completeWorkout(template, null), WorkoutInputError);
+  await assert.rejects(store.completeWorkout(crypto.randomUUID(), null), WorkoutInputError);
 
   const ready = await planned(today, [{ exercise: squat, sets: [lifted(5, 100)] }]);
-  await store.completeWorkout(ready);
+  await store.completeWorkout(ready, null);
   const done = (await store.loadWorkout(ready))!;
   assert.equal(done.status, "completed");
   assert.ok(done.completedAt);
   assert.equal(done.revision, 2);
-  await store.completeWorkout(ready);
+  await store.completeWorkout(ready, null);
   assert.equal((await store.loadWorkout(ready))!.completedAt, done.completedAt);
 
   await store.reopenWorkout(ready);
   const reopened = (await store.loadWorkout(ready))!;
   assert.equal(reopened.status, "planned");
   assert.equal(reopened.completedAt, null);
+});
+
+test("finishing with a time stores it, and finishing without one stores none", { skip }, async () => {
+  await reset();
+  const timed = await planned(today, [{ exercise: squat, sets: [lifted(5, 100)] }]);
+  assert.equal((await store.loadWorkout(timed))!.durationMinutes, null);
+  await store.completeWorkout(timed, 100);
+  assert.equal((await store.loadWorkout(timed))!.durationMinutes, 100);
+
+  const untimed = await planned(today, [{ exercise: squat, sets: [lifted(5, 100)] }]);
+  await store.completeWorkout(untimed, null);
+  assert.equal((await store.loadWorkout(untimed))!.durationMinutes, null);
+  const bounds = await planned(today, [{ exercise: squat, sets: [lifted(5, 100)] }]);
+  await store.completeWorkout(bounds, 1440);
+  assert.equal((await store.loadWorkout(bounds))!.durationMinutes, 1440);
+});
+
+test("a time that is not 1 to 1440 whole minutes is refused and the session stays unfinished", { skip }, async () => {
+  await reset();
+  const id = await planned(today, [{ exercise: squat, sets: [lifted(5, 100)] }]);
+  for (const minutes of [0, -5, 1441, 1.5, Number.NaN, Number.POSITIVE_INFINITY, "100", undefined, {}] as unknown[]) {
+    await assert.rejects(store.completeWorkout(id, minutes as number | null), WorkoutInputError, String(minutes));
+  }
+  const doc = (await store.loadWorkout(id))!;
+  assert.equal(doc.status, "planned");
+  assert.equal(doc.durationMinutes, null);
+  assert.equal(doc.revision, 1);
+});
+
+test("reopening keeps the time, saving does not touch it, and finishing again with the field empty clears it", { skip }, async () => {
+  await reset();
+  const id = await planned(today, [{ exercise: squat, sets: [lifted(5, 100)] }]);
+  await store.completeWorkout(id, 100);
+  await store.reopenWorkout(id);
+  const reopened = (await store.loadWorkout(id))!;
+  assert.equal(reopened.status, "planned");
+  assert.equal(reopened.durationMinutes, 100);
+
+  const saved = await store.saveWorkout(id, reopened.revision, draftOf("Session", today, [{ exercise: squat, sets: [lifted(5, 105)] }]));
+  assert.equal(saved.ok, true);
+  assert.equal((await store.loadWorkout(id))!.durationMinutes, 100);
+
+  await store.completeWorkout(id, 90);
+  assert.equal((await store.loadWorkout(id))!.durationMinutes, 90);
+  await store.reopenWorkout(id);
+  await store.completeWorkout(id, null);
+  const cleared = (await store.loadWorkout(id))!;
+  assert.equal(cleared.status, "completed");
+  assert.equal(cleared.durationMinutes, null);
+});
+
+test("finishing a session that is already finished again sets its time, and nothing else changes", { skip }, async () => {
+  await reset();
+  const id = await planned(today, [{ exercise: squat, sets: [lifted(5, 100)] }]);
+  await store.completeWorkout(id, 100);
+  const first = (await store.loadWorkout(id))!;
+  // The same value again (a retry after a lost reply) changes nothing.
+  await store.completeWorkout(id, 100);
+  assert.deepEqual(await store.loadWorkout(id), first);
+  // Another tab that still showed the session as planned finishes it with another time: that is the latest word, not silently dropped.
+  await store.completeWorkout(id, 30);
+  const second = (await store.loadWorkout(id))!;
+  assert.equal(second.durationMinutes, 30);
+  assert.equal(second.status, "completed");
+  assert.equal(second.completedAt, first.completedAt);
+  assert.equal(second.revision, first.revision);
+  assert.deepEqual(second.blocks, first.blocks);
+  await store.completeWorkout(id, null);
+  assert.equal((await store.loadWorkout(id))!.durationMinutes, null);
+  // A time that cannot be stored is refused for a finished session too.
+  await assert.rejects(store.completeWorkout(id, 0), WorkoutInputError);
+  assert.equal((await store.loadWorkout(id))!.durationMinutes, null);
+});
+
+test("a typed time is the time the public pages show, over the measured one", { skip }, async () => {
+  await reset();
+  const day = addDays(today, -2);
+  const at = (time: string) => `${day}T${time}:00.000Z`;
+  const sets = (first: string, last: string) => [{ exercise: squat, sets: [lifted(5, 100, { at: at(first) }), lifted(5, 100, { at: at(last) })] }];
+  const measured = await completed(day, sets("09:00", "10:00"), "Measured");
+  const typed = await completed(day, sets("09:00", "10:00"), "Typed");
+  const forgotten = await completed(day, sets("01:00", "23:00"), "Forgotten timer");
+  const brief = await completed(day, sets("09:00", "09:01"), "Brief");
+  for (const id of [measured, typed, forgotten, brief]) await schema.rows("UPDATE workouts SET started_at = NULL WHERE id = $1", [id]);
+  await schema.rows("UPDATE workouts SET duration_minutes = 100 WHERE id = $1", [typed]);
+  await schema.rows("UPDATE workouts SET duration_minutes = 600 WHERE id = $1", [forgotten]);
+  await schema.rows("UPDATE workouts SET duration_minutes = 2 WHERE id = $1", [brief]);
+
+  assert.equal((await pub.publicWorkout(measured))!.minutes, 60);
+  assert.equal((await pub.publicWorkout(typed))!.minutes, 100);
+  assert.equal((await pub.publicWorkout(forgotten))!.minutes, 600);
+  assert.equal((await pub.publicWorkout(brief))!.minutes, 2);
+
+  const [week] = await pub.publicWeeks();
+  const minutesOf = (id: string) => week.sessions.find((session) => session.id === id)!.minutes;
+  assert.equal(minutesOf(measured), 60);
+  assert.equal(minutesOf(typed), 100);
+  assert.equal(minutesOf(forgotten), 600);
+  assert.equal(minutesOf(brief), 2);
+});
+
+test("a time typed for a finished session reaches the public pages through finishing, and clearing it brings the measured one back", { skip }, async () => {
+  await reset();
+  const day = addDays(today, -1);
+  const id = await planned(day, [{ exercise: squat, sets: [lifted(5, 100, { at: `${day}T09:00:00.000Z` }), lifted(5, 100, { at: `${day}T09:30:00.000Z` })] }]);
+  await store.completeWorkout(id, 100);
+  assert.equal((await pub.publicWorkout(id))!.minutes, 100);
+  await store.reopenWorkout(id);
+  await store.completeWorkout(id, null);
+  assert.equal((await pub.publicWorkout(id))!.minutes, 30);
 });
 
 test("deleting a workout removes it with its blocks and sets, but keeps sessions started from a template", { skip }, async () => {

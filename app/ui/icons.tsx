@@ -13,6 +13,7 @@ const paths = {
   minus: <path d="M5 12h14" />,
   close: <path d="M6 6l12 12M18 6L6 18" />,
   more: <><rect x="4" y="10.5" width="3" height="3" fill="currentColor" stroke="none" /><rect x="10.5" y="10.5" width="3" height="3" fill="currentColor" stroke="none" /><rect x="17" y="10.5" width="3" height="3" fill="currentColor" stroke="none" /></>,
+  grip: <><rect x="7" y="5" width="3" height="3" fill="currentColor" stroke="none" /><rect x="14" y="5" width="3" height="3" fill="currentColor" stroke="none" /><rect x="7" y="10.5" width="3" height="3" fill="currentColor" stroke="none" /><rect x="14" y="10.5" width="3" height="3" fill="currentColor" stroke="none" /><rect x="7" y="16" width="3" height="3" fill="currentColor" stroke="none" /><rect x="14" y="16" width="3" height="3" fill="currentColor" stroke="none" /></>,
   search: <><circle cx="10.5" cy="10.5" r="5.5" /><path d="M15 15l5 5" /></>,
   trash: <path d="M4 7h16M9 7V4h6v3M6.5 7l1 13h9l1-13M10 11v5M14 11v5" />,
   swap: <path d="M4 8h14M14 4l4 4-4 4M20 16H6M10 12l-4 4 4 4" />,

@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { BarLoad, perSide } from "@/app/ui/bar-load";
 import { Icon } from "@/app/ui/icons";
 import { Notation } from "@/app/ui/notation";
@@ -18,6 +18,7 @@ import { Menu, type MenuItem } from "./menu";
 import styles from "./session.module.css";
 import type { SheetState } from "./sheets";
 import { fieldSpecs } from "./specs";
+import { gripHintId, gripId } from "./use-block-drag";
 
 type Mode = "plan" | "log";
 
@@ -35,6 +36,10 @@ type BlockProps = {
   dispatch: (action: EditAction) => void;
   open: (sheet: SheetState) => void;
   onRemoveBlock: (block: BlockDoc) => void;
+  /** The order can still be dragged: a template or a plan, until the first set is done. */
+  movable: boolean;
+  onGrip: (blockId: string, event: PointerEvent<HTMLElement>) => void;
+  onGripKey: (blockId: string, index: number, count: number, event: KeyboardEvent<HTMLElement>) => void;
   onLogged: (seconds: number) => void;
   newId: () => string;
 };
@@ -75,6 +80,21 @@ export const ExerciseBlock = memo(function ExerciseBlock(props: BlockProps) {
         <header className={styles.exHead}>
           <span className={styles.exNo} aria-hidden="true">{index + 1}</span>
           <h2 id={headingId} className={styles.exName}>{name}</h2>
+          {props.movable && count > 1 && (
+            <button
+              type="button"
+              id={gripId(block.id)}
+              className={`icon-btn ${styles.grip}`}
+              aria-label={`Move ${name}`}
+              aria-roledescription="drag handle"
+              aria-describedby={gripHintId}
+              onPointerDown={(event) => props.onGrip(block.id, event)}
+              onKeyDown={(event) => props.onGripKey(block.id, index, count, event)}
+              onContextMenu={(event) => event.preventDefault()}
+            >
+              <Icon name="grip" />
+            </button>
+          )}
           <Menu label={`${name}, exercise options`} items={items} />
           {(log && history || block.notes) && (
             <div className={styles.exInfo}>

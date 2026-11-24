@@ -98,18 +98,35 @@
 .block > section { scroll-margin-top: 4.5rem; }
 .exHead {
   display: grid;
-  grid-template-columns: 1.75rem minmax(0, 1fr) auto;
+  grid-template-columns: 1.75rem minmax(0, 1fr) auto auto;
   column-gap: 0.25rem;
   align-items: center;
   padding: 0 0.5rem 0 var(--gutter);
 }
 .exNo { font-size: var(--text-l); font-weight: 800; line-height: 1; }
+/* While an exercise is carried its number is drawn from an attribute: the number it will have once dropped. */
+.exNo[data-carry] { font-size: 0; }
+.exNo[data-carry]::before { content: attr(data-carry); font-size: var(--text-l); }
 .exName { font-size: var(--text-l); line-height: 1.15; overflow-wrap: anywhere; }
-.exInfo { grid-column: 2 / 4; padding-right: 0.5rem; margin-top: -0.2rem; }
+.exInfo { grid-column: 2 / -1; padding-right: 0.5rem; margin-top: -0.2rem; }
 .exLast, .exNotes { font-size: var(--text-s); color: var(--ink-soft); }
 .exLast { overflow-wrap: anywhere; }
 .exNotes { white-space: pre-wrap; overflow-wrap: anywhere; }
 .exLast + .exNotes { margin-top: 0.15rem; }
+
+/* Carrying an exercise (planning only). The handle alone refuses touch scrolling, so the page scrolls under a
+   finger everywhere else. The carried block is marked by a wash ground and an ink rule above and below, with no
+   shadow; the others move aside by a transform, and only when motion is welcome do they ease. */
+.grip { margin-inline-end: 0.25rem; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: grab; scroll-margin-top: 5rem; }
+.blocks[data-carrying] { user-select: none; -webkit-user-select: none; cursor: grabbing; }
+.blocks[data-carrying] .grip { cursor: grabbing; }
+.carried { position: relative; z-index: 3; background: var(--wash); }
+.carried::before, .carried::after { content: ""; position: absolute; left: 0; right: 0; height: 3px; background: var(--ink); }
+.carried::before { top: 0; }
+.carried::after { bottom: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .blocks[data-carrying] > li:not(.carried) { transition: transform 150ms ease-out; }
+}
 
 /* The set table ---------------------------------------------------------------- */
 
@@ -291,6 +308,8 @@
 /* Sheets ------------------------------------------------------------------ */
 
 .sheetForm { display: grid; gap: 1rem; }
+/* A message or a hint under its field. */
+.fieldNote { margin-top: 0.4rem; }
 .sheetActions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding-top: 0.25rem; }
 .sheetFields { display: grid; grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr)); gap: 1rem; }
 .quick { display: flex; flex-wrap: wrap; gap: 0.5rem; }

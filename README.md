@@ -30,6 +30,7 @@ A workout is an ordered list of exercises, and each exercise holds its sets. Tem
 - **Exercises** live in the library (**Exercises**). Each one says what a set of it records (weight and reps, bodyweight reps, time, or distance and time), what it is loaded with, and its default rest. Barbell exercises get their loads drawn as plates on the bar. *Add the common lifts* fills an empty library in one step. Exercises that have history are archived, not deleted.
 - **Templates** are workouts you repeat. Give each exercise its target sets: reps or a range such as 8–12, a load, a target RPE, warm-up sets, rest and notes. Start a template from the desk in one tap, or plan it for another day.
 - **Import from a spreadsheet** (under Templates) turns rows copied from Excel or Sheets into templates: one exercise per row with sets, reps and a load, an RPE or a remark. Workouts side by side and weeks stacked under each other become separate templates, and exercises the library does not know are added. A remark on a row becomes a note on the exercise, and notes are published with a session once it is finished.
+- **Order.** When planning (a template, a session on a later day, or today's session until its first set is done) each exercise has a grip in its header: drag it, with a finger, a pen or a mouse, to change the order, or press Arrow Up or Arrow Down with the grip focused. The menu's *Move up* and *Move down* work in both planning and logging; the grip goes once a set is logged, where a stray drag costs more than it gives.
 - **Extra set fields** add something to record on a set, such as bar speed, for every exercise or for one.
 
 ## The animated main lifts
@@ -62,6 +63,8 @@ A block (**Blocks**) is a named run of training weeks. Its sessions are ordinary
 The session screen is built for one thumb between sets. Each set is one row: what you did last time, the load, the reps, RPE, and a done button. A row you leave untouched logs its target, or last time's numbers when the template gives none. The next set is marked, and for barbell lifts it shows the plates to put on each side. A rest timer starts when a set is done.
 
 Nothing waits on the network. Changes are saved in the background, kept on the phone while offline, and sent when the connection returns. A logged set is never dropped: when a reply is lost on a bad connection, or the same session is open on two devices, what each one holds is combined set by set rather than one replacing the other. Finishing the session publishes its logged sets and notes; sets that were not done stay private. A finished session can be edited or reopened.
+
+The time shown beside a session is measured from its first to its last logged set, and left out when that is under 5 or over 360 minutes, since it then says more about the timer than the session. When sets were logged after the fact, type the time in the Finish sheet instead (`100` minutes or `1:40`, up to 24 hours): it is shown as typed, an empty field means the measured time, and a reopened session keeps it. The field opens the full keyboard, because `1:40` needs a colon that a phone's number pad lacks.
 
 ## OAuth setup
 

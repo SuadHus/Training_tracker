@@ -4,6 +4,7 @@ import {
   type CustomValues, type Equipment, type ExerciseInfo, type FieldInfo, type Measures, type SetRun, type Tracking,
   type WorkSummary,
 } from "./workout-doc";
+import { shownMinutes } from "./session-time";
 import { listFields } from "./workout-store";
 import { healthTimeZone, withingsMorningEndHour, withingsMorningStartHour } from "./health-normalize";
 
@@ -46,13 +47,6 @@ const publicExercise = (row: ExerciseFieldsRow): PublicExercise => ({
   primaryMuscle: row.primary_muscle, secondaryMuscles: row.secondary_muscles,
 });
 
-/** Whole minutes between the first and last logged set; anything outside 5 to 360 is a forgotten timer, not a session. */
-function sessionMinutes(start: Date | null, end: Date | null): number | null {
-  if (!start || !end) return null;
-  const minutes = (end.valueOf() - start.valueOf()) / 60_000;
-  return minutes >= 5 && minutes <= 360 ? Math.round(minutes) : null;
-}
-
 const sessionOrder = "coalesce(started_at, completed_at, created_at)";
 
 type Neighbour = { id: string; title: string; day: string };
@@ -60,10 +54,10 @@ type Neighbour = { id: string; title: string; day: string };
 export async function publicWorkout(id: string): Promise<PublicWorkout | null> {
   if (!isId(id)) return null;
   const { rows: [workout] } = await query<{
-    id: string; day: string; title: string; notes: string; started_at: Date | null; first_logged: Date | null;
-    last_logged: Date | null;
+    id: string; day: string; title: string; notes: string; started_at: Date | null; duration_minutes: number | null;
+    first_logged: Date | null; last_logged: Date | null;
   }>(
-    `SELECT w.id, w.local_day::text AS day, w.title, w.notes, w.started_at,
+    `SELECT w.id, w.local_day::text AS day, w.title, w.notes, w.started_at, w.duration_minutes,
         (SELECT min(logged_at) FROM workout_sets WHERE workout_id = w.id) AS first_logged,
         (SELECT max(logged_at) FROM workout_sets WHERE workout_id = w.id) AS last_logged
       FROM workouts w WHERE w.id = $1 AND w.status = 'completed'`,
@@ -111,7 +105,7 @@ export async function publicWorkout(id: string): Promise<PublicWorkout | null> {
 
   return {
     id: workout.id, title: workout.title, day: workout.day, notes: workout.notes,
-    minutes: sessionMinutes(workout.started_at ?? workout.first_logged, workout.last_logged),
+    minutes: shownMinutes(workout.duration_minutes, workout.started_at ?? workout.first_logged, workout.last_logged),
     blocks, fields, vitals,
     summary: summarizeSets(rows.map((row) => ({ warmup: row.warmup, actual: measuresOf(row), loggedAt: "logged" }))),
     muscles: [...muscles].map(([name, sets]) => ({ name, sets })).sort((a, b) => b.sets - a.sets || a.name.localeCompare(b.name)),
@@ -186,12 +180,12 @@ export async function publicUpcomingPlanned(today = stockholmDay()): Promise<Upc
 }
 
 export async function publicWeeks(options: { limit?: number } = {}): Promise<WeekSummary[]> {
-  const { rows: workouts } = await query<{ id: string; title: string; day: string; started_at: Date | null }>(
+  const { rows: workouts } = await query<{ id: string; title: string; day: string; started_at: Date | null; duration_minutes: number | null }>(
     `WITH weeks AS (
         SELECT DISTINCT date_trunc('week', local_day)::date AS start FROM workouts
         WHERE status = 'completed' ORDER BY start DESC LIMIT $1
       )
-      SELECT w.id, w.title, w.local_day::text AS day, w.started_at
+      SELECT w.id, w.title, w.local_day::text AS day, w.started_at, w.duration_minutes
         FROM workouts w JOIN weeks ON w.local_day >= weeks.start AND w.local_day < weeks.start + 7
         WHERE w.status = 'completed'
         ORDER BY w.local_day, coalesce(w.started_at, w.completed_at, w.created_at), w.id`,
@@ -235,7 +229,7 @@ export async function publicWeeks(options: { limit?: number } = {}): Promise<Wee
       weeks.set(start, week);
     }
     week.sessions.push({
-      id: workout.id, title: workout.title, day: workout.day, minutes: sessionMinutes(workout.started_at ?? first, last),
+      id: workout.id, title: workout.title, day: workout.day, minutes: shownMinutes(workout.duration_minutes, workout.started_at ?? first, last),
       workSets: total.workSets, volume: total.volume, blocks,
     });
     week.workSets += total.workSets;

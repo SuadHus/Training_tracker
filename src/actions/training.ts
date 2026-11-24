@@ -8,6 +8,7 @@ import {
 } from "../lib/block-store";
 import { syncStaleHealthProviders } from "../lib/health-sync";
 import { requireOwner } from "../lib/owner";
+import { isSessionMinutes } from "../lib/session-time";
 import {
   WorkoutInputError, isDay, isId, stockholmDay,
   type Equipment, type ExerciseInfo, type FieldInfo, type FieldKind, type Tracking,
@@ -94,11 +95,12 @@ async function waitBriefly(work: Promise<unknown>, ms: number) {
   }
 }
 
-export async function completeWorkoutAction(id: string): Promise<{ ok: true } | Failure> {
+/** `minutes` is the time the owner typed in the Finish sheet, or null to publish the measured time. */
+export async function completeWorkoutAction(id: string, minutes: number | null): Promise<{ ok: true } | Failure> {
   await requireOwner();
-  if (!isId(id)) return unreadable;
+  if (!isId(id) || (minutes !== null && !isSessionMinutes(minutes))) return unreadable;
   return attempt(async () => {
-    await completeWorkout(id);
+    await completeWorkout(id, minutes);
     const sync = syncStaleHealthProviders();
     try {
       after(() => sync.then(() => undefined, () => undefined));

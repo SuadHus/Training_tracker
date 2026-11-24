@@ -112,6 +112,11 @@ export type WorkoutDoc = {
   templateId: string | null;
   startedAt: string | null;
   completedAt: string | null;
+  /**
+   * How long the session took, in minutes, as the owner typed it when finishing; null means the
+   * measured time is used. Not part of the draft: only finishing a session sets or clears it.
+   */
+  durationMinutes: number | null;
   /** Bumped by every save. A save names the revision it started from. */
   revision: number;
   blocks: BlockDoc[];
@@ -136,6 +141,8 @@ export const limits = {
   durationSeconds: 86400,
   distanceMeters: 1_000_000,
   restSeconds: 3600,
+  /** The longest session time that can be typed: a day. */
+  sessionMinutes: 1440,
   customText: 500,
 } as const;
 

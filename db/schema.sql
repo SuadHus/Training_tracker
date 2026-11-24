@@ -165,6 +165,11 @@ ALTER TABLE workouts
   ADD COLUMN IF NOT EXISTS created_at timestamptz NOT NULL DEFAULT now(),
   ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
 
+-- How long a finished session took, in minutes, when the owner typed it while
+-- finishing (empty means the time measured from the logged sets is shown).
+ALTER TABLE workouts
+  ADD COLUMN IF NOT EXISTS duration_minutes int CHECK (duration_minutes BETWEEN 1 AND 1440);
+
 -- Deleting a template keeps the sessions that were started from it.
 ALTER TABLE workouts DROP CONSTRAINT IF EXISTS workouts_template_id_fkey;
 ALTER TABLE workouts ADD CONSTRAINT workouts_template_id_fkey

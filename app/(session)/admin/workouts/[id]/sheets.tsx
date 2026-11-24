@@ -1,12 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import {
   completeWorkoutAction, deleteWorkoutAction, saveAsTemplateAction, startWorkoutAction,
 } from "@/src/actions/training";
 import { Sheet } from "@/app/ui/sheet";
 import { SubmitButton } from "@/app/ui/submit-button";
+import { finishTime, formatSessionTime, measuredMinutes } from "@/src/lib/session-time";
 import {
   DEFAULT_REST_SECONDS, addDays, allSets, formatSpan, formatTotal, isLogged, limits, newId, summarizeSets,
   type BlockDoc, type ExerciseInfo, type FieldInfo, type SetDoc, type WorkoutDoc,
@@ -296,17 +297,33 @@ function FinishForm({ doc, status, dispatch, flush, onClose }: { doc: WorkoutDoc
   const [notes, setNotes] = useState(doc.notes);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [now] = useState(() => Date.now());
+  // What was typed, or the time given when the session was finished before and then reopened.
+  const [time, setTime] = useState(doc.durationMinutes === null ? "" : formatSessionTime(doc.durationMinutes));
+  const [timeError, setTimeError] = useState(false);
+  const timeField = useRef<HTMLInputElement>(null);
+  // With the keyboard up the sheet shows a few lines: bring the message in, as little as it takes, so it is read with the field.
+  useEffect(() => {
+    if (timeError) document.getElementById("f-time-error")?.scrollIntoView({ block: "nearest" });
+  }, [timeError]);
 
   const sets = allSets(doc);
   const done = sets.filter(isLogged);
   const skipped = sets.length - done.length;
   const summary = summarizeSets(sets);
-  const first = doc.startedAt ?? done.map((set) => set.loggedAt!).sort()[0] ?? null;
-  const minutes = first ? Math.max(0, (now - new Date(first).valueOf()) / 60000) : null;
+  // The time the public pages show when the field is left empty: first to last logged set, as they measure it.
+  const stamps = done.map((set) => set.loggedAt!).sort();
+  const first = doc.startedAt ?? stamps[0] ?? null;
+  const last = stamps.at(-1) ?? null;
+  const measured = measuredMinutes(first ? new Date(first) : null, last ? new Date(last) : null);
 
   const finish = async (event: FormEvent) => {
     event.preventDefault();
+    const entry = finishTime(time);
+    if (entry.stop) {
+      setTimeError(true);
+      timeField.current?.focus();
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -316,7 +333,7 @@ function FinishForm({ doc, status, dispatch, flush, onClose }: { doc: WorkoutDoc
         setBusy(false);
         return;
       }
-      const result = await completeWorkoutAction(doc.id);
+      const result = await completeWorkoutAction(doc.id, entry.minutes);
       if (!result.ok) {
         setError(result.message);
         setBusy(false);
@@ -338,10 +355,23 @@ function FinishForm({ doc, status, dispatch, flush, onClose }: { doc: WorkoutDoc
           <tr><th scope="row">Sets done</th><td className="num">{done.length} of {sets.length}</td></tr>
           <tr><th scope="row">Working sets</th><td className="num">{summary.workSets}</td></tr>
           <tr><th scope="row">Volume</th><td className="num">{formatTotal(summary.volume)} kg</td></tr>
-          {minutes !== null && minutes >= 1 && <tr><th scope="row">Time</th><td className="num">{formatSpan(minutes)}</td></tr>}
         </tbody>
       </table>
       {skipped > 0 && <p>{skipped === 1 ? "1 set was not done. It stays private." : `${skipped} sets were not done. They stay private.`}</p>}
+      <div>
+        <label className="label" htmlFor="f-time">Time</label>
+        {/* A text keyboard, not the number pad: hours and minutes need the colon, which the number pad of a phone lacks. */}
+        <input
+          id="f-time" ref={timeField} className="field" inputMode="text" enterKeyHint="done" autoComplete="off" autoCorrect="off" spellCheck={false}
+          value={time} placeholder={measured === null ? "" : formatSessionTime(measured)}
+          aria-invalid={timeError ? true : undefined} aria-describedby={timeError ? "f-time-error f-time-hint" : "f-time-hint"}
+          onChange={(event) => { setTime(event.target.value); setTimeError(false); }}
+        />
+        {timeError && <p id="f-time-error" className={`notice notice--alert ${styles.fieldNote}`} role="alert">Not a time. Use 100 or 1:40, up to 24 hours.</p>}
+        <p id="f-time-hint" className={`hint ${styles.fieldNote}`}>
+          Minutes, or hours and minutes as 1:40. {measured === null ? "Left empty, no time is shown." : `Left empty, the measured time is shown: ${formatSpan(measured).replace(/ /g, "\u00a0")}.`}
+        </p>
+      </div>
       <div>
         <label className="label" htmlFor="f-notes">Notes <span className="hint">Published with the session.</span></label>
         <textarea id="f-notes" className="textarea" value={notes} maxLength={limits.notes} onChange={(event) => setNotes(event.target.value)} />

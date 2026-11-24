@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { historyAction, reopenWorkoutAction } from "@/src/actions/training";
+import { placeText } from "@/src/lib/block-drag";
 import { dayLabel } from "@/src/lib/day-format";
 import {
   isLogged, limits, loggedCount, newId, nextSet, trackingLabels, type BlockDoc, type ExerciseInfo, type FieldInfo, type WorkoutDoc,
@@ -18,6 +19,7 @@ import {
   SaveTemplateSheet, TargetSheet, type SheetState,
 } from "./sheets";
 import { StatusLine, TopBar } from "./topbar";
+import { gripHintId, useBlockDrag } from "./use-block-drag";
 import { useWorkoutSync } from "./use-workout-sync";
 
 const HISTORY_WAIT = 5000;
@@ -49,6 +51,35 @@ export function WorkoutSession({ initial, exercises: initialExercises, fields, h
   const logged = loggedCount(doc);
   const next = live ? nextSet(doc) : null;
   const since = doc.startedAt ?? doc.blocks.flatMap((block) => block.sets).flatMap((set) => (set.loggedAt ? [set.loggedAt] : [])).sort()[0] ?? null;
+
+  // Moving an exercise, by drag or by key: one edit, and the live region says where it is now.
+  const list = useRef<HTMLOListElement>(null);
+  const places = useRef({ blocks: doc.blocks, exerciseById });
+  useEffect(() => {
+    places.current = { blocks: doc.blocks, exerciseById };
+  });
+  const [said, setSaid] = useState("");
+  const sayTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(sayTimer.current), []);
+  // Emptied first, so the same words said twice (a block pushed against the end) are read again.
+  const say = useCallback((text: string) => {
+    clearTimeout(sayTimer.current);
+    setSaid("");
+    sayTimer.current = setTimeout(() => setSaid(text), 50);
+  }, []);
+  const moveBlock = useCallback((blockId: string, to: number) => {
+    const { blocks, exerciseById: byId } = places.current;
+    const moved = blocks.find((block) => block.id === blockId);
+    dispatch({ type: "moveBlock", blockId, to });
+    if (moved) say(placeText(byId.get(moved.exerciseId)?.name ?? "Unknown exercise", to, blocks.length));
+  }, [dispatch, say]);
+  // Enter or Space on a grip: it is a button, so say what it is for instead of staying silent.
+  const explainGrip = useCallback((blockId: string) => {
+    const { blocks, exerciseById: byId } = places.current;
+    const block = blocks.find((one) => one.id === blockId);
+    if (block) say(`Press Arrow Up or Arrow Down to move ${byId.get(block.exerciseId)?.name ?? "Unknown exercise"}.`);
+  }, [say]);
+  const drag = useBlockDrag(list, moveBlock, explainGrip);
 
   const close = useCallback((kind: SheetState["kind"]) => setSheet((current) => (current?.kind === kind ? null : current)), []);
 
@@ -207,6 +238,8 @@ export function WorkoutSession({ initial, exercises: initialExercises, fields, h
       <StatusLine status={status} onRetry={retryNow} since={live && logged > 0 ? since : null} />
 
       <div className={styles.content} inert={gone}>
+        <p id={gripHintId} className="sr">Drag to change the order, or press Arrow Up or Arrow Down.</p>
+        <p className="sr" role="status" aria-live="polite">{said}</p>
         {notice && <p className="notice notice--alert" role="alert">{notice}</p>}
         {doc.status === "planned" && doc.day !== null && doc.day < today && logged === 0 && (
           <p className={styles.late}>
@@ -222,7 +255,7 @@ export function WorkoutSession({ initial, exercises: initialExercises, fields, h
               : "Add the first exercise. Sets you mark done are saved as you go."}
           </p>
         ) : (
-          <ol className={styles.blocks}>
+          <ol className={styles.blocks} ref={list}>
             {doc.blocks.map((block, index) => (
               <ExerciseBlock
                 key={block.id}
@@ -239,6 +272,9 @@ export function WorkoutSession({ initial, exercises: initialExercises, fields, h
                 newId={newId}
                 onLogged={startRest}
                 onRemoveBlock={removeBlock}
+                movable={mode === "plan" || (doc.status === "planned" && logged === 0)}
+                onGrip={drag.start}
+                onGripKey={drag.press}
               />
             ))}
           </ol>

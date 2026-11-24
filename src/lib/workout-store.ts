@@ -7,6 +7,7 @@ import {
   type Tracking, type WorkoutDoc, type WorkoutStatus,
 } from "./workout-doc";
 import { buildDraft, guessExercise, parseSheet, sheetKey, sheetLimits, type SheetEntry } from "./sheet-import";
+import { isSessionMinutes } from "./session-time";
 import type { ExerciseHistory } from "./workout-edit";
 
 type Run = (sql: string, params?: unknown[]) => Promise<{ rows: any[]; rowCount: number | null }>;
@@ -62,7 +63,7 @@ const measuresFrom = (row: Record<string, number | null>, prefix: string): Measu
 
 async function loadWith(run: Run, id: string): Promise<WorkoutDoc | null> {
   const { rows: [workout] } = await run(
-    `SELECT id, status, title, local_day::text AS day, notes, template_id, started_at, completed_at, revision
+    `SELECT id, status, title, local_day::text AS day, notes, template_id, started_at, completed_at, duration_minutes, revision
       FROM workouts WHERE id = $1`, [id],
   );
   if (!workout) return null;
@@ -102,6 +103,7 @@ async function loadWith(run: Run, id: string): Promise<WorkoutDoc | null> {
     templateId: workout.template_id,
     startedAt: iso(workout.started_at),
     completedAt: iso(workout.completed_at),
+    durationMinutes: workout.duration_minutes,
     revision: workout.revision,
     blocks: blocks.map((block): BlockDoc => ({
       id: block.id, exerciseId: block.exercise_id, notes: block.notes, restSeconds: block.rest_seconds,
@@ -351,13 +353,27 @@ export async function copyToTemplate(workoutId: string, input: { id?: string; ti
   return id;
 }
 
-export async function completeWorkout(id: string): Promise<void> {
+/**
+ * Publish a session. `minutes` is how long it took as the owner typed it, 1 to 1440 whole minutes,
+ * or null to have the measured time shown. It replaces any time given the last time it was finished.
+ * A session that is already finished stays as it is except for that time: the owner's latest entry
+ * is the one published, and the same entry again (a retry after a lost reply) changes nothing.
+ */
+export async function completeWorkout(id: string, minutes: number | null): Promise<void> {
+  if (minutes !== null && !isSessionMinutes(minutes)) {
+    throw new WorkoutInputError(`The time must be a whole number of minutes, 1 to ${limits.sessionMinutes}.`);
+  }
   await transaction(async (client) => {
     const { rows: [workout] } = await client.query(
       "SELECT status, local_day::text AS day FROM workouts WHERE id = $1 FOR UPDATE", [isId(id) ? id : null],
     );
     if (!workout) throw new WorkoutInputError("That session no longer exists.");
-    if (workout.status === "completed") return;
+    if (workout.status === "completed") {
+      await client.query(
+        "UPDATE workouts SET duration_minutes = $2, updated_at = now() WHERE id = $1 AND duration_minutes IS DISTINCT FROM $2", [id, minutes],
+      );
+      return;
+    }
     if (workout.status === "template") throw new WorkoutInputError("A template cannot be finished. Start a session from it.");
     const { rows: [logged] } = await client.query(
       "SELECT count(*)::int AS count FROM workout_sets WHERE workout_id = $1 AND logged_at IS NOT NULL", [id],
@@ -368,8 +384,9 @@ export async function completeWorkout(id: string): Promise<void> {
     }
     await client.query(
       `UPDATE workouts SET status = 'completed', completed_at = now(), revision = revision + 1, updated_at = now(),
+          duration_minutes = $2,
           started_at = coalesce(started_at, (SELECT min(logged_at) FROM workout_sets WHERE workout_id = $1))
-        WHERE id = $1`, [id],
+        WHERE id = $1`, [id, minutes],
     );
   });
 }
